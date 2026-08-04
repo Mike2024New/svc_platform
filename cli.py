@@ -5,11 +5,11 @@ from svc_platform.factories import cli_factory, settings_manager_factory, server
 Базовая сборка cli.py по умолчанию. Централизованная точка сборки.
 (Именно это нужно будет сделать в сервисах которые будут построены на базе этого репозитория - там это распределить по файлам)
 """
-from svc_platform.engine import engine_factory
+from svc_platform.engine import engine_factory, Engine
 from pathlib import Path
 
 settings, settings_manager = settings_manager_factory(json_file_path=Path.cwd() / 'settings.json')
-engine = engine_factory(settings=settings)
+engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings)
 server = server_factory(settings=settings, api_modul=api_modul)
 

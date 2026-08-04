@@ -96,7 +96,7 @@ class Engine:
         :param data: Входные данные (опционально)
         :return: None
         """
-        _ = self, data  # игнорировать variable unused
+        _ = self, data, args, kwargs  # игнорировать variable unused
         if not self._running or self._streaming_running:
             return
 
@@ -173,13 +173,18 @@ class Engine:
         pass
 
 
-def engine_factory(settings: SchemaSettings) -> Engine:
-    """расширяемая фабрика приложения"""
-    return Engine(settings)
+def engine_factory(engine_class: type(Engine), settings: SchemaSettings) -> Engine:
+    """
+    расширяемая фабрика приложения
+    :param engine_class: класс на базе которого будет создан engine
+    :param settings: настройки
+    :return:
+    """
+    return engine_class(settings)
 
 
 if __name__ == '__main__':
-    eng = engine_factory(settings=SchemaSettings())
+    eng = engine_factory(engine_class=Engine, settings=SchemaSettings())
     eng.start()
     # print(eng.process(data=['1', '2', '3']))
     # eng.execute(data='123')
