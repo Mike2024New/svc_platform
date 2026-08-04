@@ -1,14 +1,16 @@
 from infrastructure_cli_utils import CliSettings
+from infrastructure_path_utils import get_root_dir_path
+from infrastructure_builder import BuildParameters
 from svc_platform.factories import cli_factory, settings_manager_factory, server_factory, api_factory
+from svc_platform.engine import engine_factory, Engine
+from svc_platform.factories.schemas import SchemaSettings
 
 """
 Базовая сборка cli.py по умолчанию. Централизованная точка сборки.
 (Именно это нужно будет сделать в сервисах которые будут построены на базе этого репозитория - там это распределить по файлам)
 """
-from svc_platform.engine import engine_factory, Engine
-from pathlib import Path
 
-settings, settings_manager = settings_manager_factory(json_file_path=Path.cwd() / 'settings.json')
+settings, settings_manager = settings_manager_factory(settings_model=SchemaSettings())
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings)
 server = server_factory(settings=settings, api_modul=api_modul)
@@ -27,11 +29,9 @@ cli_settings = CliSettings(
     # enable_log_viewer=True,
 )
 
-from infrastructure_builder import BuildParameters
-
 build_settings = BuildParameters(
     name=settings.name,
-    entry_point_path=Path.cwd() / 'cli.py',  # заменить на cli.py
+    entry_point_path=get_root_dir_path() / 'cli.py',  # заменить на cli.py
     open_folder=False,
     clear_old_distributive=True,
     venv_dir_name='.venv',
