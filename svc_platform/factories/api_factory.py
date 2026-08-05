@@ -1,6 +1,7 @@
 from svc_platform.engine import Engine
 from fastapi import APIRouter
 from svc_platform.api import routres_factory, lifespan_factory
+from svc_platform import slots
 
 """
 Реализация серверной логики запуска компонента
@@ -16,6 +17,8 @@ class ApiFactoryResult:
     engine: Engine
     routers_list: list[APIRouter]
     lifespan: Callable
+    callback_start: Callable
+    callback_start_error: Callable
 
 
 def api_factory(
@@ -37,4 +40,6 @@ def api_factory(
         engine=engine,
         routers_list=routers_list,  # можно расширить на выходе
         lifespan=lifespan,  # можно переопределить на выходе
+        callback_start_error=lambda error_data: slots.slot15(name=settings.name, error_data=error_data),
+        callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
     )

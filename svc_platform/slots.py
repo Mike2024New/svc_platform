@@ -79,3 +79,15 @@ def slot11(name: str, err: Exception, *args, **kwargs):
 def slot12(name: str, *args, **kwargs):
     _ = args, kwargs
     print(f'{name}.api.is_component_running server is not started')
+
+
+def slot13(name, data):
+    print(f'{name}.server.start {data}')
+
+
+def slot14(name):
+    print(f'{name}.server.stop')
+
+
+def slot15(name, error_data):
+    print(f'{name}.server.sart.error -> {error_data}')
