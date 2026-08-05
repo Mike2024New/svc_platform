@@ -15,12 +15,12 @@ class Engine:
         self._settings = settings
         self._running = False
         self.parameters: dict[str, Any] = {'running': self._running}
-        self.set_parameters()
+        self._on_set_parameters()
         self._component_stop = threading.Event()
         self._streaming_stop = asyncio.Event()
         self._streaming_running = False
 
-    def set_parameters(self):
+    def _on_set_parameters(self):
         """логика записи параметров (например информация об используемом устройстве)"""
         pass
 
@@ -168,7 +168,8 @@ class Engine:
         return ['stub']
 
     def _on_execute(self, data: Any, *args, **kwargs) -> None:
-        pass
+        _ = self, data, args, kwargs
+        print('stub')
 
 
 def engine_factory(engine_class: type(Engine), settings: T) -> Engine:
