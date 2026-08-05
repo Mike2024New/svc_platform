@@ -6,6 +6,7 @@ from svc_platform.engine import engine_factory, Engine
 from svc_platform.schemas.schemas import SettingsExample
 
 """
+Пример сборки cli приложения
 Базовая сборка cli.py по умолчанию. Централизованная точка сборки.
 (Именно это нужно будет сделать в сервисах которые будут построены на базе этого репозитория - там это распределить по файлам)
 """
