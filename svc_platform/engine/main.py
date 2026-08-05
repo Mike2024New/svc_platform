@@ -1,18 +1,16 @@
 import asyncio
 import threading, atexit
-from pydantic import BaseModel
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, TypeVar
 from svc_platform import slots
+from svc_platform.schemas import BaseSettings
 
 __all__ = ['engine_factory', 'Engine']
 
-
-class SchemaSettings(BaseModel):
-    name: str = 'audio_input_svc'
+T = TypeVar('T', bound=BaseSettings)
 
 
 class Engine:
-    def __init__(self, settings: SchemaSettings):
+    def __init__(self, settings: BaseSettings):
         atexit.register(self.stop)
         self._settings = settings
         self._running = False
@@ -173,7 +171,7 @@ class Engine:
         pass
 
 
-def engine_factory(engine_class: type(Engine), settings: SchemaSettings) -> Engine:
+def engine_factory(engine_class: type(Engine), settings: T) -> Engine:
     """
     расширяемая фабрика приложения
     :param engine_class: класс на базе которого будет создан engine
@@ -184,8 +182,15 @@ def engine_factory(engine_class: type(Engine), settings: SchemaSettings) -> Engi
 
 
 if __name__ == '__main__':
-    eng = engine_factory(engine_class=Engine, settings=SchemaSettings())
-    eng.start()
-    # print(eng.process(data=['1', '2', '3']))
-    # eng.execute(data='123')
-    eng.start()
+    # пример расширения класса и применения модели в наследниках
+    class SettingsExtend(BaseSettings):
+        samplerate: int
+
+
+    class EngineExtend(Engine):
+        def __init__(self, settings: SettingsExtend):
+            super().__init__(settings=settings)
+            self._settings = settings
+            # расширенные поля доступны через точечную нотацию
+            print(self._settings.name)
+            print(self._settings.samplerate)
