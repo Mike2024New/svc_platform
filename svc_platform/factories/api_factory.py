@@ -40,6 +40,6 @@ def api_factory(
         engine=engine,
         routers_list=routers_list,  # можно расширить на выходе
         lifespan=lifespan,  # можно переопределить на выходе
-        callback_start_error=lambda error_data: slots.slot15(name=settings.name, error_data=error_data),
+        callback_start_error=lambda error_data: slots.slot15(name=settings.name, err=error_data),
         callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
     )
