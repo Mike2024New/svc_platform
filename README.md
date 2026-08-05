@@ -1,6 +1,13 @@
 # SVCPlatform
 
 **Ядро для запуска сервисов соответствующих svc стандарту (svc стандарт - `svc` в названиях репозиториев)**
+
+### url для установки пакета (прописать в pyproject.toml целевого проекта)
+
+```text
+"svc_platform @ git+https://github.com/Mike2024New/svc_platform.git"
+```
+
 ---
 
 ## SVC стандарт:
