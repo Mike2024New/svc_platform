@@ -1,5 +1,5 @@
 from typing import Any
-from svc_platform.helper import message_bus_add
+from svc_platform.bootstrap import message_bus_add
 
 """
 Набор функций-слотов, для вынесения дополнительной логики из модулей. (Сократить код сделав его удобочитабельным).

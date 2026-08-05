@@ -9,7 +9,7 @@ from svc_platform.engine import Engine
 Базовая сборка cli.py по умолчанию. Централизованная точка сборки.
 (Именно это нужно будет сделать в сервисах которые будут построены на базе этого репозитория - там это распределить по файлам)
 """
-from svc_platform.helper import settings, settings_manager
+from svc_platform.bootstrap import settings, settings_manager
 
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings)

@@ -1,7 +1,7 @@
 import pytest
 from svc_platform.engine import Engine
 from svc_platform.schemas.schemas import SettingsExample
-from svc_platform.helper import settings
+from svc_platform.bootstrap import settings
 
 
 @pytest.fixture(scope="module")
