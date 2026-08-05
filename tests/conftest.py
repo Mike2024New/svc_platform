@@ -1,7 +1,7 @@
 import pytest
 from svc_platform.engine import Engine
 from svc_platform.schemas.schemas import SettingsExample
-from svc_platform.factories import settings_manager_factory
+from svc_platform.helper import settings
 
 
 @pytest.fixture(scope="module")
@@ -18,8 +18,5 @@ def settings_class():
 
 @pytest.fixture(scope="module")
 def test_engine(engine_class, settings_class):
-    settings, _ = settings_manager_factory(
-        settings_model=settings_class(name='test')
-    )
     engine = engine_class(settings=settings)
     yield engine

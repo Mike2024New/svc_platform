@@ -1,17 +1,16 @@
 from infrastructure_cli_utils import CliSettings
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_builder import BuildParameters
-from svc_platform.factories import cli_factory, settings_manager_factory, server_factory, api_factory, engine_factory
+from svc_platform.factories import cli_factory, server_factory, api_factory, engine_factory
 from svc_platform.engine import Engine
-from svc_platform.schemas.schemas import SettingsExample
 
 """
 Пример сборки cli приложения
 Базовая сборка cli.py по умолчанию. Централизованная точка сборки.
 (Именно это нужно будет сделать в сервисах которые будут построены на базе этого репозитория - там это распределить по файлам)
 """
+from svc_platform.helper import settings, settings_manager
 
-settings, settings_manager = settings_manager_factory(settings_model=SettingsExample(name='example_app'))
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings)
 server = server_factory(settings=settings, api_modul=api_modul)
