@@ -25,7 +25,7 @@ cli_settings = CliSettings(
     enable_git_push=True,
     enable_register_sync=True,
     enable_build_command=True,
-    # enable_run_test=True,
+    enable_run_test=True,
     # enable_run_command=True,
     # enable_log_viewer=True,
 )

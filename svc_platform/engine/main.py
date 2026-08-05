@@ -1,3 +1,4 @@
+import uuid
 import asyncio
 import threading, atexit
 from typing import Any, Awaitable, Callable, TypeVar
@@ -101,8 +102,10 @@ class Engine:
         self._streaming_running = True
         self._streaming_stop.clear()
         task = asyncio.create_task(self._on_stream(data, callback, *args, **kwargs))
+
+        request_id = str(uuid.uuid4())[:8]
         try:
-            slots.slot8(name=self._settings.name)
+            slots.slot8(name=self._settings.name, request_id=request_id)
             while not self._streaming_stop.is_set():
                 if task.done():
                     exc = task.exception()
@@ -110,9 +113,9 @@ class Engine:
                         raise exc
                     break
                 await asyncio.sleep(0.1)
-            slots.slot9(name=self._settings.name)
+            slots.slot9(name=self._settings.name, request_id=request_id)
         except Exception as err:
-            slots.slot7(name=self._settings.name, err=err)
+            slots.slot7(name=self._settings.name, request_id=request_id, err=err)
             raise
         finally:
             if task.done():

@@ -1,5 +1,4 @@
 from typing import Any
-from svc_platform.message_bus import message_bus_add
 
 """
 Набор функций-слотов, для вынесения дополнительной логики из модулей. (Сократить код сделав его удобочитабельным).
@@ -9,6 +8,22 @@ from svc_platform.message_bus import message_bus_add
     
 Пример назначения логирование (сейчас своя шина сообщений, но при необходимости можно будет заменить и на logging).
 """
+
+from svc_platform.factories import message_bus_add_factory
+from svc_platform.schemas import BaseSettings
+from svc_platform.factories import settings_manager_factory
+from infrastructure_path_utils import get_root_dir_path
+
+__all__ = ['message_bus_add', 'message_bus_settings']
+
+settings, settings_manager = settings_manager_factory(settings_model=BaseSettings(name='demo_svc'))
+
+logs_file_path = get_root_dir_path() / 'logs' / 'log.jsonl'
+
+message_bus_add, message_bus_settings = message_bus_add_factory(
+    settings=settings,
+    logs_file_path=logs_file_path,
+)
 
 
 def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
@@ -83,7 +98,7 @@ def slot6(name: str, err: Exception, *args, **kwargs):
     )
 
 
-def slot7(name: str, err: Exception, *args, **kwargs):
+def slot7(name: str, request_id: str, err: Exception, *args, **kwargs):
     """Ошибка stream метода движка"""
     _ = args, kwargs
     message_bus_add(
@@ -92,10 +107,11 @@ def slot7(name: str, err: Exception, *args, **kwargs):
         message=f'{name}.engine.stream.error -> {err}',
         event=f'engine.stream.error',
         error=err,
+        request_id=request_id,
     )
 
 
-def slot8(name: str, *args, **kwargs):
+def slot8(name: str, request_id: str, *args, **kwargs):
     """stream start, начало стриминга"""
     _ = args, kwargs
     message_bus_add(
@@ -103,10 +119,11 @@ def slot8(name: str, *args, **kwargs):
         subcomponent=name,
         message=f'{name}.engine.stream.start',
         event=f'engine.stream.start',
+        request_id=request_id,
     )
 
 
-def slot9(name: str, *args, **kwargs):
+def slot9(name: str, request_id: str, *args, **kwargs):
     """stream stop, остановка движка"""
     _ = args, kwargs
     message_bus_add(
@@ -114,17 +131,7 @@ def slot9(name: str, *args, **kwargs):
         subcomponent=name,
         message=f'{name}.engine.stream.stop',
         event=f'engine.stream.stop',
-    )
-
-
-def slot10(name: str, *args, **kwargs):
-    """api.stream - клиент отключился"""
-    _ = args, kwargs
-    message_bus_add(
-        level='info',
-        subcomponent=name,
-        message=f'{name}.api.stream client disconnected',
-        event=f'engine.api.stream client disconnected',
+        request_id=request_id,
     )
 
 

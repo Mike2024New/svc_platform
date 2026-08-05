@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.11.0"
+version = "0.12.0"
 description = "Платформа для запуска сервисов (репозитории svc)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -42,3 +42,8 @@ rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
 git = "https://github.com/Mike2024New/infrastructure2.git"
 subdirectory = "packages/infrastructure_path_utils"
 rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
+
+# пути к тестам
+[tool.pytest.ini_options]
+testpaths = ["svc_platform/tests"]
+pythonpath = ["."]

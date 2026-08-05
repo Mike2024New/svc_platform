@@ -62,7 +62,6 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
                     if not closed_by_client:
                         await websocket.send_json({'type': 'data', 'chunk': chunk_in})
                 except WebSocketDisconnect:
-                    slots.slot10(name=settings.name)  # клиент отключился
                     closed_by_client = True
                     engine.stream_stop()
 
