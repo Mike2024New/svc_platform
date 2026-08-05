@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.8.0"
+version = "0.9.0"
 description = "Платформа для запуска сервисов (репозитории svc)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -19,10 +19,26 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["svc_platform*"]
+include = [
+    "svc_platform*",
+]
 
-[tool.uv.sources]
-infrastructure-server = { git = "https://github.com/Mike2024New/infrastructure2.git", subdirectory = "packages/infrastructure_server", rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4" }
-infrastructure-cli-utils = { git = "https://github.com/Mike2024New/infrastructure2.git", subdirectory = "packages/infrastructure_cli_utils", rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4" }
-infrastructure-message-bus = { git = "https://github.com/Mike2024New/infrastructure2.git", subdirectory = "packages/infrastructure_message_bus", rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4" }
-infrastructure-path-utils = { git = "https://github.com/Mike2024New/infrastructure2.git", subdirectory = "packages/infrastructure_path_utils", rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4" }
+[tool.uv.sources.infrastructure-server]
+git = "https://github.com/Mike2024New/infrastructure2.git"
+subdirectory = "packages/infrastructure_server"
+rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
+
+[tool.uv.sources.infrastructure-cli-utils]
+git = "https://github.com/Mike2024New/infrastructure2.git"
+subdirectory = "packages/infrastructure_cli_utils"
+rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
+
+[tool.uv.sources.infrastructure-message-bus]
+git = "https://github.com/Mike2024New/infrastructure2.git"
+subdirectory = "packages/infrastructure_message_bus"
+rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
+
+[tool.uv.sources.infrastructure-path-utils]
+git = "https://github.com/Mike2024New/infrastructure2.git"
+subdirectory = "packages/infrastructure_path_utils"
+rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
