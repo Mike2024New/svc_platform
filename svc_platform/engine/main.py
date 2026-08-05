@@ -1,6 +1,7 @@
 import uuid
 import asyncio
 import threading, atexit
+from time import perf_counter
 from typing import Any, Awaitable, Callable, TypeVar
 from svc_platform import slots
 from svc_platform.schemas import BaseSettings
@@ -73,10 +74,16 @@ class Engine:
         (логику метода определять в _on_execute)
         """
         _ = self, data, args, kwargs  # игнорировать variable unused
+        start_time = perf_counter()
+        request_id = str(uuid.uuid4())[:8]
+        slots.slot16(name=self._settings.name, request_id=request_id)
         if not self._running:
             return None
         try:
-            return self._on_process(data, *args, **kwargs)
+            result = self._on_process(data, *args, **kwargs)
+            end_time = round(perf_counter() - start_time, 2)
+            slots.slot17(name=self._settings.name, request_id=request_id, end_time=end_time)
+            return result
         except Exception as err:
             slots.slot5(name=self._settings.name, err=err)
             raise
@@ -95,6 +102,7 @@ class Engine:
         :param data: Входные данные (опционально)
         :return: None
         """
+        start_time = perf_counter()
         _ = self, data, args, kwargs  # игнорировать variable unused
         if not self._running or self._streaming_running:
             return
@@ -113,7 +121,8 @@ class Engine:
                         raise exc
                     break
                 await asyncio.sleep(0.1)
-            slots.slot9(name=self._settings.name, request_id=request_id)
+            end_time = round(perf_counter() - start_time, 2)
+            slots.slot9(name=self._settings.name, request_id=request_id, end_time=end_time)
         except Exception as err:
             slots.slot7(name=self._settings.name, request_id=request_id, err=err)
             raise
@@ -152,10 +161,15 @@ class Engine:
         (логику метода определять в _on_execute)
         """
         _ = self, data, args, kwargs  # игнорировать variable unused
+        start_time = perf_counter()
+        request_id = str(uuid.uuid4())[:8]
+        slots.slot18(name=self._settings.name, request_id=request_id)
         if not self._running:
             return
         try:
             self._on_execute(data, *args, **kwargs)
+            end_time = round(perf_counter() - start_time, 2)
+            slots.slot19(name=self._settings.name, request_id=request_id, end_time=end_time)
         except Exception as err:
             slots.slot6(name=self._settings.name, err=err)
             raise

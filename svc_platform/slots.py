@@ -22,7 +22,7 @@ def slots_init(callback: Callable):
 def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
     """Запуск движка (engine.started)"""
     _ = args, kwargs, parameters
-    print(f'{name}.engine.start')
+    # print(f'{name}.engine.start')
     message_bus_add(
         level='start',
         subcomponent=name,
@@ -116,24 +116,26 @@ def slot8(name: str, request_id: str, *args, **kwargs):
     _ = args, kwargs
     # print(f'{name}.engine.stream.start')
     message_bus_add(
-        level='start',
+        level='process',
         subcomponent=name,
         message=f'{name}.engine.stream.start',
         event=f'engine.stream.start',
         request_id=request_id,
+        data={'timedelta_sec': 0},
     )
 
 
-def slot9(name: str, request_id: str, *args, **kwargs):
+def slot9(name: str, request_id: str, end_time: float, *args, **kwargs):
     """stream stop, остановка движка"""
     _ = args, kwargs
     # print(f'{name}.engine.stream.stop')
     message_bus_add(
-        level='stop',
+        level='process',
         subcomponent=name,
         message=f'{name}.engine.stream.stop',
         event=f'engine.stream.stop',
         request_id=request_id,
+        data={'timedelta_sec': end_time},
     )
 
 
@@ -161,8 +163,8 @@ def slot12(name: str, *args, **kwargs):
     )
 
 
-def slot13(name, data):
-    # print(f'{name}.server.start {data}')
+def slot13(name, data, *args, **kwargs):
+    _ = args, kwargs
     message_bus_add(
         level='start',
         subcomponent=name,
@@ -172,8 +174,8 @@ def slot13(name, data):
     )
 
 
-def slot14(name):
-    # print(f'{name}.server.stop')
+def slot14(name, *args, **kwargs):
+    _ = args, kwargs
     message_bus_add(
         level='stop',
         subcomponent=name,
@@ -182,12 +184,60 @@ def slot14(name):
     )
 
 
-def slot15(name, err):
-    # print(f'{name}.server.start.error -> {err}')
+def slot15(name, err, *args, **kwargs):
+    _ = args, kwargs
     message_bus_add(
         level='error',
         subcomponent=name,
         message=f'{name}.server.start.error -> {err}',
-        event=f'engine.start.error',
+        event=f'engine.server.error',
         error=err,
+    )
+
+
+def slot16(name, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    message_bus_add(
+        level='process',
+        subcomponent=name,
+        message=f'{name}.engine.start.process',
+        event=f'engine.start.process',
+        request_id=request_id,
+        data={'timedelta_sec': 0},
+    )
+
+
+def slot17(name, end_time: float, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    message_bus_add(
+        level='process',
+        subcomponent=name,
+        message=f'{name}.engine.stop.process',
+        event=f'engine.stop.process',
+        request_id=request_id,
+        data={'timedelta_sec': end_time},
+    )
+
+
+def slot18(name, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    message_bus_add(
+        level='process',
+        subcomponent=name,
+        message=f'{name}.engine.start.execute',
+        event=f'engine.start.execute',
+        request_id=request_id,
+        data={'timedelta_sec': 0},
+    )
+
+
+def slot19(name, end_time: float, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    message_bus_add(
+        level='process',
+        subcomponent=name,
+        message=f'{name}.engine.stop.execute',
+        event=f'engine.stop.execute',
+        request_id=request_id,
+        data={'timedelta_sec': end_time},
     )
