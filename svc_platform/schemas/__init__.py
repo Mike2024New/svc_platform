@@ -1,6 +1,6 @@
-from svc_platform.schemas.schemas import BaseSettings, settings_model
+from svc_platform.schemas.schemas import BaseSettings, SettingsExample
 
 __all__ = [
     'BaseSettings',
-    'settings_model',
+    'SettingsExample',
 ]

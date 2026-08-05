@@ -1,5 +1,4 @@
 from typing import Any
-from svc_platform.bootstrap import message_bus_add
 
 """
 Набор функций-слотов, для вынесения дополнительной логики из модулей. (Сократить код сделав его удобочитабельным).
@@ -10,11 +9,20 @@ from svc_platform.bootstrap import message_bus_add
 Пример назначения логирование (сейчас своя шина сообщений, но при необходимости можно будет заменить и на logging).
 """
 
+from typing import Callable
+
+message_bus_add: Callable | None = None
+
+
+def slots_init(callback: Callable):
+    global message_bus_add
+    message_bus_add = callback
+
 
 def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
     """Запуск движка (engine.started)"""
     _ = args, kwargs, parameters
-    # print(f'{name}.engine.start')
+    print(f'{name}.engine.start')
     message_bus_add(
         level='start',
         subcomponent=name,
@@ -144,7 +152,7 @@ def slot11(name: str, err: Exception, *args, **kwargs):
 
 def slot12(name: str, *args, **kwargs):
     _ = args, kwargs
-    # print(f'{name}.api.warning  server is not started\')
+    # print(f"{name}.api.warning  server is not started")
     message_bus_add(
         level='warning',
         subcomponent=name,
