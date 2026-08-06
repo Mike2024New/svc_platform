@@ -1,10 +1,12 @@
 import asyncio
+import uuid
 
 from fastapi import APIRouter, status, Depends, HTTPException, WebSocket
 from starlette.websockets import WebSocketDisconnect
 from typing import Any
 from svc_platform.engine import Engine
 from svc_platform import slots
+from svc_platform.engine import EngineExc
 
 
 def routres_factory(engine: Engine, settings) -> list[APIRouter]:
@@ -26,6 +28,7 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
 
     @app_router.get('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
     async def start() -> dict:
+        """Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
         if engine.parameters['running']:
             raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
         engine.start()
@@ -33,16 +36,41 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
 
     @app_router.get('/stop/', summary='Остановка компонента', status_code=status.HTTP_200_OK)
     async def stop(_is_running: bool = Depends(is_component_running)) -> dict:
+        """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
         engine.stop()
         return {
             'message': f'Компонент `{settings.name}` остановлен.',
             'parameters': engine.parameters,
         }
 
+    @app_router.get('/process_stop/')
+    async def process_stop(request_id: str):
+        engine.stop_process(request_id=request_id)
+        return {'message': 'Процесс остановлен'}
+
+    @app_router.get('/process_result/')
+    async def process_result(request_id: str):
+        """Получение результата по request_id (коду который вернул /process/)"""
+        try:
+            result = engine.get_process_result(request_id=request_id)
+            return {'status': 'done', 'result': result}
+        except EngineExc.ProcessCancelled as err:
+            return {'status': 'error', 'message': str(err)}
+        except EngineExc.ProcessResultNotCompleted as err:
+            return {'status': 'pending', 'message': str(err)}
+        except EngineExc.ProcessResultNoFindReqestId as err:
+            return {'status': 'error', 'message': str(err)}
+
     @app_router.post('/process/')
     async def process(data, _is_running: bool = Depends(is_component_running)):
-        result = engine.process(data)
-        return {'message': 'результат выполнения операции', 'result': result}
+        """Запуск процесса вычисления входных данных. Результат можно посмотреть на /process_result/ по готовности"""
+        request_id = str(uuid.uuid4())[:8]
+        asyncio.create_task(engine.process(data, request_id=request_id))
+        return {'message': 'process started, Show result -> /process_result/', 'request_id': request_id}
+
+    @app_router.get('/execute_stop/')
+    async def execute_stop():
+        engine.stop_execute()
 
     @app_router.post('/execute/')
     async def execute(data, _is_running: bool = Depends(is_component_running)):
@@ -70,7 +98,7 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
                         await websocket.send_json({'type': 'data', 'chunk': chunk_in})
                 except WebSocketDisconnect:
                     closed_by_client = True
-                    engine.stream_stop()
+                    engine.stop_stream()
 
             await engine.stream(callback=async_callback, data=data)
             # сообщить клиенту что соединение закрыто
@@ -83,7 +111,7 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
                     await websocket.send_json({'type': 'err', 'detail': f'server error, connection close'})
                 except Exception:  # noqa
                     pass
-                engine.stream_stop()
+                engine.stop_stream()
             slots.slot11(name=settings.name, err=err)
 
     return [app_router]

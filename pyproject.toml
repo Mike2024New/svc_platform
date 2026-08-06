@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.18.0"
+version = "0.19.0"
 description = "Платформа для запуска сервисов (репозитории svc)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -47,6 +47,12 @@ rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
 testpaths = [
     "tests",
 ]
+asyncio_mode = "auto"
 pythonpath = [
     ".",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.4.0",
 ]
