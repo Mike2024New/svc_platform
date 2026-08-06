@@ -18,9 +18,13 @@ class EngineTestSuite:
         return SettingsExample
 
     @pytest.fixture
-    def test_engine(self, engine_class, settings_class):
+    def logs_enable(self):
+        return True
+
+    @pytest.fixture
+    def test_engine(self, engine_class, settings_class, logs_enable):
         settings, settings_manager = settings_manager_factory(settings_model=SettingsExample())
         message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
         message_bus_settings.set_component_name(component=f"{settings.name}_test")
-        slots_init(callback=message_bus_add)
+        slots_init(callback=message_bus_add, enable=logs_enable)
         yield engine_class(settings=settings)
