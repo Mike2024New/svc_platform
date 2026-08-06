@@ -18,8 +18,9 @@ class EngineTestExecute(EngineTestSuite):
         _ = self
         engine = test_engine
         engine.start()
-        task = asyncio.create_task(engine.execute(data=1))
+        request_id = '#001'
+        task = asyncio.create_task(engine.execute(data=1, request_id=request_id))
         await asyncio.sleep(0.1)
-        engine.stop_execute()
+        engine.stop_execute(request_id=request_id)
         await task
         engine.stop()

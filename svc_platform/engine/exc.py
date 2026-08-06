@@ -7,3 +7,18 @@ class EngineExc:
 
     class ProcessCancelled(RuntimeError):
         pass
+
+    class ProcessLimit(RuntimeError):
+        pass
+
+    class ProcessRequestIdAlreadyExists(RuntimeError):
+        pass
+
+    class ExecuteNoFindReqestId(RuntimeError):
+        pass
+
+    class ExecuteLimit(RuntimeError):
+        pass
+
+    class ExecuteRequestIdAlreadyExists(RuntimeError):
+        pass
