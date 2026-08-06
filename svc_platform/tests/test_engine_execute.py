@@ -12,6 +12,7 @@ class EngineTestExecute(EngineTestSuite):
         # проверка что execute процесс запускается
         task = asyncio.create_task(engine.execute(data=1))
         await task
+        engine.stop()
 
     async def test_execute_interrupted(self, test_engine):
         _ = self
@@ -21,3 +22,4 @@ class EngineTestExecute(EngineTestSuite):
         await asyncio.sleep(0.1)
         engine.stop_execute()
         await task
+        engine.stop()

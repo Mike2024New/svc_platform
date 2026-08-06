@@ -96,7 +96,8 @@ class Engine:
             end_time = round(perf_counter() - start_time, 2)
             slots.slot17(name=self._settings.name, request_id=request_id, end_time=end_time)
             # добавление результата в ячейку
-            self._process[request_id]['result'] = result
+            if self._process.get(request_id) is not None:
+                self._process[request_id]['result'] = result
         except asyncio.CancelledError:
             self._stop_process.set()  # явная остановка процесса
             slots.slot20(name=self._settings.name, request_id=request_id)
@@ -107,7 +108,6 @@ class Engine:
             raise
         finally:
             self._stop_process.clear()
-        return None
 
     def get_process_result(self, request_id):
         if request_id not in self._process:
