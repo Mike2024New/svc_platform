@@ -6,32 +6,20 @@ from typing import Any, Awaitable, Callable, TypeVar
 from svc_platform import slots
 from svc_platform.schemas import BaseSettings
 from svc_platform.engine.exc import EngineExc
-from dataclasses import dataclass
 
-__all__ = ['engine_factory', 'Engine', 'ExampleOnSettings']
+__all__ = ['engine_factory', 'Engine']
 
 T = TypeVar('T', bound=BaseSettings)
 
 
-@dataclass
-class ExampleOnSettings:
-    on_execute_time_step: float = 0.2
-    on_execute_test_phrase: str = 'This is a #stub. Example TTS Voice synthesis in progress. Long text for example.'
-    on_process_iterations: int = 10
-    on_process_time_step: float = 0.5
-    on_process_result: Any = 'stub'
-
-
 class Engine:
-    def __init__(self, settings: BaseSettings, test_on_settings: ExampleOnSettings | None = None):
+    def __init__(self, settings: BaseSettings):
         """
 
         :param settings: системные настройки приложения (settings.json)
-        :param test_on_settings: настройки для примеров, для того, чтобы протестировать движок, применяются до переопределения _on методов
         """
         atexit.register(self.stop)
         self._settings = settings
-        self._example_settings = test_on_settings or ExampleOnSettings()  # используется до переопределения _on методов
         self._running = False
         self.parameters: dict[str, Any] = {'running': self._running}
         self._on_set_parameters()
@@ -244,17 +232,17 @@ class Engine:
     async def _on_process(self, data: Any, process, *args, **kwargs) -> Any | None:
         """Процесс вычислений, например transcribate у whisper (перевод аудио в текст). Может быть прерван через stop_process"""
         _ = self, data, args, kwargs
-        for _ in range(self._example_settings.on_process_iterations):  # on_process_iterations : int = 20
+        for _ in range(5):  # 5 итераций по 0.5 сек -> 2.5 сек
             if process.is_set():  # досрочная остановка
                 return None
-            await asyncio.sleep(self._example_settings.on_process_time_step)  # иммитация длительной нагрузки вычислений
-        return self._example_settings.on_process_result
+            await asyncio.sleep(0.5)  # иммитация длительной нагрузки вычислений
+        return 'stub'  # для непереопределенного метода будет возвращаться заглушка
 
     async def _on_execute(self, data: Any, *args, **kwargs) -> None:
         """Метод исполнительный, например tts. Следит за состоянием переменной self._stop_execute.is_set()"""
         _ = self, data, args, kwargs
-        for i in self._example_settings.on_execute_test_phrase.split():
-            await asyncio.sleep(self._example_settings.on_execute_time_step)
+        for i in 'This is a #stub. Example TTS Voice synthesis in progress. Long text for example.'.split():
+            await asyncio.sleep(0.1)
             if self._stop_execute.is_set():  # досрочная остановка
                 return
             print(i)
