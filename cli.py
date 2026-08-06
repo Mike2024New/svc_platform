@@ -57,5 +57,6 @@ if __name__ == '__main__':
         settings=settings,
         settings_manager=settings_manager,
         build_settings=build_settings,
+        trace_id_callback=lambda trace_id: message_bus_settings.set_trace_id(trace_id=trace_id),
     )
     app()

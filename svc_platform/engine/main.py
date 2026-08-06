@@ -1,7 +1,7 @@
 import uuid
 import asyncio
 import threading, atexit
-from time import perf_counter
+from time import perf_counter, sleep
 from typing import Any, Awaitable, Callable, TypeVar
 from svc_platform import slots
 from svc_platform.schemas import BaseSettings
@@ -132,20 +132,11 @@ class Engine:
             self._streaming_running = False
             self._streaming_stop.clear()
 
-    async def _on_stream(self, data, callback, *args, **kwargs) -> None:
-        _ = self, data, args, kwargs  # игнорировать variable unused
-        # временная заглушка, имитирующая полезную нагрузку
-        i = 0
-        while True:
-            i += 1
-            await callback(f'stub chunk:{i}')
-            await asyncio.sleep(0.2)
-
     def stream_stop(self) -> None:
         """Явная остановка стриминга (например через http)"""
         self._streaming_stop.set()
 
-    def execute(self, data: Any, *args, **kwargs) -> None:
+    async def execute(self, data: Any, *args, **kwargs) -> None:
         """
         (логику метода определять в _on_execute)
         Исполнительный метод (action режим).
@@ -167,7 +158,7 @@ class Engine:
         if not self._running:
             return
         try:
-            self._on_execute(data, *args, **kwargs)
+            await self._on_execute(data, *args, **kwargs)
             end_time = round(perf_counter() - start_time, 2)
             slots.slot19(name=self._settings.name, request_id=request_id, end_time=end_time)
         except Exception as err:
@@ -180,13 +171,24 @@ class Engine:
     def _on_stop(self, *args, **kwargs) -> None:
         pass
 
+    async def _on_stream(self, data, callback, *args, **kwargs) -> None:
+        _ = self, data, args, kwargs  # игнорировать variable unused
+        # временная заглушка, имитирующая полезную нагрузку
+        i = 0
+        while True:
+            i += 1
+            await callback(f'stream chunk:{i} #stub')
+            await asyncio.sleep(0.2)
+
     def _on_process(self, data: Any, *args, **kwargs) -> Any:
         _ = self, data, args, kwargs
-        return ['stub']
+        sleep(2)  # иммитация длительной нагрузки вычислений
+        return ['process #stub']
 
-    def _on_execute(self, data: Any, *args, **kwargs) -> None:
+    async def _on_execute(self, data: Any, *args, **kwargs) -> None:
         _ = self, data, args, kwargs
-        print('stub')
+        await asyncio.sleep(2)  # иммитация длительной нагрузки исполнения
+        print('execute #stub')
 
 
 def engine_factory(engine_class: type(Engine), settings: T) -> Engine:
@@ -202,7 +204,7 @@ def engine_factory(engine_class: type(Engine), settings: T) -> Engine:
 if __name__ == '__main__':
     # пример расширения класса и применения модели в наследниках
     class SettingsExtend(BaseSettings):
-        samplerate: int
+        samplerate: int = 16000
 
 
     class EngineExtend(Engine):
@@ -212,3 +214,15 @@ if __name__ == '__main__':
             # расширенные поля доступны через точечную нотацию
             print(self._settings.name)
             print(self._settings.samplerate)
+
+
+    async def main():
+        from svc_platform.factories.settings_manager_factory import settings_manager_factory
+
+        current_settings, _ = settings_manager_factory(settings_model=SettingsExtend())
+        engine = engine_factory(engine_class=EngineExtend, settings=current_settings)
+        engine.start()
+        await engine.execute(data=1)
+
+
+    asyncio.run(main())

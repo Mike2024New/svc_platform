@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, status, Depends, HTTPException, WebSocket
 from starlette.websockets import WebSocketDisconnect
 from typing import Any
@@ -41,6 +43,11 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
     async def process(data, _is_running: bool = Depends(is_component_running)):
         result = engine.process(data)
         return {'message': 'результат выполнения операции', 'result': result}
+
+    @app_router.post('/execute/')
+    async def execute(data, _is_running: bool = Depends(is_component_running)):
+        asyncio.create_task(engine.execute(data))
+        return {'message': 'execute запущен', 'result': None}
 
     @app_router.websocket('/ws')
     async def streaming(websocket: WebSocket):

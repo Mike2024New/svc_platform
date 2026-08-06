@@ -1,15 +1,14 @@
 from typing import Any
-
-"""
-Набор функций-слотов, для вынесения дополнительной логики из модулей. (Сократить код сделав его удобочитабельным).
-ВАЖНО! 
-    - Каждая функция уникальна и вызов в проекте возможен только 1 раз.
-    - Функции не упорядочены.
-    
-Пример назначения логирование (сейчас своя шина сообщений, но при необходимости можно будет заменить и на logging).
-"""
-
+from typing import Literal
 from typing import Callable
+
+"""
+Единая точка логирования и мониторинга жизненного цикла всех SVC-сервисов. 
+
+- К переменной message_bus_add подшивается программа обработки логов через slots_init.
+- Если slots_init не был выполнен — выводятся print'ы в консоль (fallback).
+- Можно заменить/дополнить на Kafka, logging, OpenTelemetry и т.д.
+"""
 
 message_bus_add: Callable | None = None
 
@@ -19,11 +18,35 @@ def slots_init(callback: Callable):
     message_bus_add = callback
 
 
+def log(
+        level: Literal['debug', 'info', 'warning', 'error', 'critical', 'start', 'stop', 'process'],
+        subcomponent: str,
+        message: str,
+        event: str,
+        request_id: str | None = None,
+        data: dict | None = None,
+        error: Exception | None = None,
+        **kwargs
+):
+    _ = kwargs
+    if message_bus_add is not None:
+        message_bus_add(
+            level=level,
+            subcomponent=subcomponent,
+            message=message,
+            event=event,
+            data=data,
+            error=error,
+            request_id=request_id,
+        )
+    else:
+        print(message)
+
+
 def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
     """Запуск движка (engine.started)"""
     _ = args, kwargs, parameters
-    # print(f'{name}.engine.start')
-    message_bus_add(
+    log(
         level='start',
         subcomponent=name,
         message=f'{name}.engine.start',
@@ -35,8 +58,7 @@ def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
 def slot2(name: str, parameters: dict[str, Any], *args, **kwargs):
     """Остановка движка (engine.started)"""
     _ = args, kwargs, parameters
-    # print(f'{name}.engine.stop')
-    message_bus_add(
+    log(
         level='stop',
         subcomponent=name,
         message=f'{name}.engine.stop',
@@ -48,8 +70,7 @@ def slot2(name: str, parameters: dict[str, Any], *args, **kwargs):
 def slot3(name: str, err: Exception, *args, **kwargs):
     """Ошибка запуска движка"""
     _ = args, kwargs
-    # print(f'{name}.engine.start.error -> {err}')
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.engine.start.error -> {err}',
@@ -61,8 +82,7 @@ def slot3(name: str, err: Exception, *args, **kwargs):
 def slot4(name: str, err: Exception, *args, **kwargs):
     """Ошибка остановки движка"""
     _ = args, kwargs
-    # print(f'{name}.engine.stop.error -> {err}')
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.engine.stop.error -> {err}',
@@ -74,8 +94,7 @@ def slot4(name: str, err: Exception, *args, **kwargs):
 def slot5(name: str, err: Exception, *args, **kwargs):
     """Ошибка процесса движка"""
     _ = args, kwargs
-    # print(f'{name}.engine.process.error -> {err}')
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.engine.process.error -> {err}',
@@ -87,8 +106,7 @@ def slot5(name: str, err: Exception, *args, **kwargs):
 def slot6(name: str, err: Exception, *args, **kwargs):
     """Ошибка execute метода движка"""
     _ = args, kwargs
-    # print(f'{name}.engine.execute.error -> {err}')
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.engine.execute.error -> {err}',
@@ -100,8 +118,7 @@ def slot6(name: str, err: Exception, *args, **kwargs):
 def slot7(name: str, request_id: str, err: Exception, *args, **kwargs):
     """Ошибка stream метода движка"""
     _ = args, kwargs
-    # print(f'{name}.engine.stream.error -> {err}')
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.engine.stream.error -> {err}',
@@ -114,8 +131,7 @@ def slot7(name: str, request_id: str, err: Exception, *args, **kwargs):
 def slot8(name: str, request_id: str, *args, **kwargs):
     """stream start, начало стриминга"""
     _ = args, kwargs
-    # print(f'{name}.engine.stream.start')
-    message_bus_add(
+    log(
         level='process',
         subcomponent=name,
         message=f'{name}.engine.stream.start',
@@ -128,8 +144,7 @@ def slot8(name: str, request_id: str, *args, **kwargs):
 def slot9(name: str, request_id: str, end_time: float, *args, **kwargs):
     """stream stop, остановка движка"""
     _ = args, kwargs
-    # print(f'{name}.engine.stream.stop')
-    message_bus_add(
+    log(
         level='process',
         subcomponent=name,
         message=f'{name}.engine.stream.stop',
@@ -142,8 +157,7 @@ def slot9(name: str, request_id: str, end_time: float, *args, **kwargs):
 def slot11(name: str, err: Exception, *args, **kwargs):
     """api.stream - ошибка соединение будет разорвано"""
     _ = args, kwargs
-    # print(f'{name}.api.stream.error disconnected, err -> {err}')
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.api.stream.error disconnected, err -> {err}',
@@ -154,8 +168,7 @@ def slot11(name: str, err: Exception, *args, **kwargs):
 
 def slot12(name: str, *args, **kwargs):
     _ = args, kwargs
-    # print(f"{name}.api.warning  server is not started")
-    message_bus_add(
+    log(
         level='warning',
         subcomponent=name,
         message=f'{name}.api.warning  server is not started',
@@ -165,7 +178,7 @@ def slot12(name: str, *args, **kwargs):
 
 def slot13(name, data, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='start',
         subcomponent=name,
         message=f'{name}.server.start {data}',
@@ -176,7 +189,7 @@ def slot13(name, data, *args, **kwargs):
 
 def slot14(name, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='stop',
         subcomponent=name,
         message=f'{name}.server.stop',
@@ -186,7 +199,7 @@ def slot14(name, *args, **kwargs):
 
 def slot15(name, err, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='error',
         subcomponent=name,
         message=f'{name}.server.start.error -> {err}',
@@ -197,7 +210,7 @@ def slot15(name, err, *args, **kwargs):
 
 def slot16(name, request_id: str, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='process',
         subcomponent=name,
         message=f'{name}.engine.start.process',
@@ -209,7 +222,7 @@ def slot16(name, request_id: str, *args, **kwargs):
 
 def slot17(name, end_time: float, request_id: str, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='process',
         subcomponent=name,
         message=f'{name}.engine.stop.process',
@@ -221,7 +234,7 @@ def slot17(name, end_time: float, request_id: str, *args, **kwargs):
 
 def slot18(name, request_id: str, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='process',
         subcomponent=name,
         message=f'{name}.engine.start.execute',
@@ -233,7 +246,7 @@ def slot18(name, request_id: str, *args, **kwargs):
 
 def slot19(name, end_time: float, request_id: str, *args, **kwargs):
     _ = args, kwargs
-    message_bus_add(
+    log(
         level='process',
         subcomponent=name,
         message=f'{name}.engine.stop.execute',

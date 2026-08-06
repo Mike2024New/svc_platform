@@ -9,9 +9,11 @@ def cli_factory(
         server=None,
         settings=None, settings_manager=None,
         log_viewer=None,
+        trace_id_callback=None,
 ):
     """
     Фабрика сборщик для получения cli приложения
+    :param trace_id_callback: применение trace_id к запускаемому серверу (для шины сообщений например)
     :param log_viewer: просмотр логов (~logs_.jsonl)
     :param settings: настройки приложения
     :param settings_manager: управление настройками приложения (изменение через cli settings-edit)
@@ -32,5 +34,6 @@ def cli_factory(
         settings_manager=settings_manager,
         server=server,
         log_viewer=log_viewer,
+        trace_id_callback=trace_id_callback,
     )
     return app
