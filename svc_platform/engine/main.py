@@ -7,7 +7,7 @@ from svc_platform import slots
 from svc_platform.schemas import BaseSettings
 from svc_platform.engine.exc import EngineExc
 
-__all__ = ['engine_factory', 'Engine']
+__all__ = ['Engine']
 
 T = TypeVar('T', bound=BaseSettings)
 
@@ -248,16 +248,6 @@ class Engine:
             print(i)
 
 
-def engine_factory(engine_class: type(Engine), settings: T) -> Engine:
-    """
-    расширяемая фабрика приложения
-    :param engine_class: класс на базе которого будет создан engine
-    :param settings: настройки
-    :return:
-    """
-    return engine_class(settings)
-
-
 if __name__ == '__main__':
     # пример расширения класса и применения модели в наследниках
     class SettingsExtend(BaseSettings):
@@ -294,8 +284,9 @@ if __name__ == '__main__':
 
 
     async def main():
-        from svc_platform.factories.settings_manager_factory import settings_manager_factory
+        from svc_platform.factories import settings_manager_factory, engine_factory
         from svc_platform.slots import slots_init
+
         slots_init(callback=None, enable=False)
         current_settings, _ = settings_manager_factory(settings_model=SettingsExtend())
         engine = engine_factory(engine_class=Engine, settings=current_settings)

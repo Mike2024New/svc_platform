@@ -13,13 +13,13 @@ def cli_factory(
 ):
     """
     Фабрика сборщик для получения cli приложения
-    :param trace_id_callback: применение trace_id к запускаемому серверу (для шины сообщений например)
-    :param log_viewer: просмотр логов (~logs_.jsonl)
-    :param settings: настройки приложения
-    :param settings_manager: управление настройками приложения (изменение через cli settings-edit)
     :param cli_settings: настройки включения/выключения методов
     :param build_settings: настройки сборщика exe (bin)
     :param server: настройка сервера (start, stop)
+    :param settings: настройки приложения
+    :param settings_manager: управление настройками приложения (изменение через cli settings-edit)
+    :param log_viewer: просмотр логов (~logs_.jsonl)
+    :param trace_id_callback: применение trace_id к запускаемому серверу (для шины сообщений например)
     :return: app - объект для запуска cli меню -> app()
     """
     # управление включением системных CLI команд:

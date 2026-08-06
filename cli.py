@@ -1,7 +1,7 @@
 from infrastructure_cli_utils import CliSettings
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_builder import BuildParameters
-from svc_platform.factories import cli_factory, server_factory, api_factory, engine_factory
+from svc_platform.factories import cli_factory, server_factory, api_factory, engine_factory, log_viewer_factory
 from svc_platform.engine import Engine
 from svc_platform.slots import slots_init
 
@@ -20,6 +20,7 @@ message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings)
 server = server_factory(settings=settings, api_modul=api_modul)
+log_viewer = log_viewer_factory()
 slots_init(callback=message_bus_add)
 
 # настройки отображения cli.py команд
@@ -32,8 +33,8 @@ cli_settings = CliSettings(
     enable_register_sync=True,
     enable_build_command=True,
     enable_run_test=True,
-    # enable_run_command=True,
-    # enable_log_viewer=True,
+    # enable_run_command=True, # для интерактива
+    enable_log_viewer=True,
 )
 
 build_settings = BuildParameters(
@@ -58,5 +59,6 @@ if __name__ == '__main__':
         settings_manager=settings_manager,
         build_settings=build_settings,
         trace_id_callback=lambda trace_id: message_bus_settings.set_trace_id(trace_id=trace_id),
+        log_viewer=log_viewer,
     )
     app()

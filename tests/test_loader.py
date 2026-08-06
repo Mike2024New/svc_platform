@@ -9,7 +9,12 @@ from svc_platform.engine import Engine
 """Точка сборки тестов"""
 
 
-class TestTts(EngineTestRun, EngineTestExecute, EngineTestProcess, EngineTestStreaming):
+class TestTts(
+    EngineTestRun,
+    EngineTestExecute,
+    EngineTestProcess,
+    EngineTestStreaming
+):
     @pytest.fixture
     def engine_class(self):
         return Engine  # точка подмены движка
