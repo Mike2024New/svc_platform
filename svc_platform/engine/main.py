@@ -316,7 +316,10 @@ if __name__ == '__main__':
         async def callback(x):
             print(x)
 
-        await engine.stream(data=1, callback=callback)
+        task = asyncio.create_task(engine.stream(data=1, callback=callback))
+        await asyncio.sleep(2)
+        engine.stop_stream()
+        await task
 
 
     asyncio.run(main())
