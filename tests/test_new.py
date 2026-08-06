@@ -1,4 +1,11 @@
-from svc_platform.tests.test_suite import EngineTestSuite
+import pytest
 
-class TestTts(EngineTestSuite):
-    pass
+from svc_platform.tests.test_engine_run import EngineTestRun
+from svc_platform.tests.test_engine_execute import EngineTestExecute
+from svc_platform.engine import Engine
+
+
+class TestTts(EngineTestRun, EngineTestExecute):
+    @pytest.fixture
+    def engine_class(self):
+        return Engine  # точка подмены движка

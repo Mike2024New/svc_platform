@@ -5,6 +5,8 @@ from svc_platform.factories import settings_manager_factory
 
 
 class EngineTestSuite:
+    """Тесты переносимые в дочерние проекты (при необходимости можно переопределять тесты там). А также подменять движки"""
+
     @pytest.fixture
     def engine_class(self):
         return Engine
@@ -18,10 +20,4 @@ class EngineTestSuite:
         settings, settings_manager = settings_manager_factory(settings_model=SettingsExample())
         yield engine_class(settings=settings)
 
-    @staticmethod
-    def test_start_stop(test_engine):
-        engine = test_engine
-        assert engine.parameters['running'] == False
-        engine.start()
-        assert engine.parameters['running'] == True
-        engine.stop()
+
