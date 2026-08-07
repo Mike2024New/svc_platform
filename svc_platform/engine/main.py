@@ -2,7 +2,7 @@ import uuid
 import asyncio
 import threading, atexit
 from time import perf_counter
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar, Generic
 from svc_platform import slots
 from svc_platform.schemas import BaseSettings
 from svc_platform.engine.exc import EngineExc
@@ -10,28 +10,49 @@ from svc_platform.schemas import EngineIOSchemas
 
 __all__ = ['Engine']
 
-T = TypeVar('T', bound=BaseSettings)
-
 """
 На потом:
 Промануалить api, сейчас они не совсем удобны.
 Добавить статусы (для execute/process), чтобы по api можно было их запрашивать
 Добавить очистку памяти (процесс) по таймауту, иначе утечка ресурсов.
 """
-from typing import Generic
 
+# =============== ДЖЕНЕРИКИ ТИПОВ ===============
+# TypeVar с bound задает "верхнюю границу" — тип-ограничение.
+# В дочерних проектах нужно переопределить эти TypeVar,
+# подставив свои модели-наследники из EngineIOSchemas и также переопределив BaseSettings.
+#
+# Это позволяет:
+# 1. IDE видеть точные типы (автокомплит полей voice, speed и т.д.)
+# 2. Pydantic валидировать данные по расширенным схемам
+# 3. Сохранить типобезопасность на всех уровнях
+#
+# Механизм: TypeVar → Generic → наследование с типами
+# Чтобы не забыть это всё и не мучиться с этим каждый раз, лучше сделать репозиторий копируемый шаблон где это всё сделано
+# ====================================================
+BaseSettingsType = TypeVar('BaseSettingsType', bound=BaseSettings)
 ExecuteInputDataType = TypeVar('ExecuteInputDataType', bound=EngineIOSchemas.execute_input_data)
+ProcessInputDataType = TypeVar('ProcessInputDataType', bound=EngineIOSchemas.process_input_data)
+ProcessOutputDataType = TypeVar('ProcessOutputDataType', bound=EngineIOSchemas.process_output_data)
+StreamingInputData = TypeVar('StreamingInputData', bound=EngineIOSchemas.streaming_input_data)
 
 
-class Engine(Generic[ExecuteInputDataType]):
+class Engine(
+    Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
+        BaseSettingsType,
+        ExecuteInputDataType,
+        ProcessInputDataType,
+        ProcessOutputDataType,
+        StreamingInputData,
+    ]
+):
     def __init__(
             self,
-            settings: BaseSettings,
+            settings: BaseSettingsType,
             process_limit: int = 1,
             execute_limit: int = 1,
     ):
         """
-
         :param settings: системные настройки приложения (settings.json)
         """
         atexit.register(self.stop)
@@ -104,7 +125,7 @@ class Engine(Generic[ExecuteInputDataType]):
     # =============== PROCESS =================
 
     async def process(
-            self, data: EngineIOSchemas.process_input_data, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs
+            self, data: ProcessInputDataType, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs
     ) -> None:
         """
         (логику метода определять в _on_execute)
@@ -155,8 +176,8 @@ class Engine(Generic[ExecuteInputDataType]):
                     self._process_registry[request_id]['event'].set()
 
     async def _on_process(
-            self, data: EngineIOSchemas.process_input_data, process: asyncio.Event, *args, **kwargs
-    ) -> EngineIOSchemas.process_output_data | None:
+            self, data: ProcessInputDataType, process: asyncio.Event, *args, **kwargs
+    ) -> ProcessOutputDataType | None:
         """Процесс вычислений, например transcribate у whisper (перевод аудио в текст). Может быть прерван через stop_process"""
         _ = self, data, args, kwargs
         for _ in range(5):  # 5 итераций по 0.5 сек -> 2.5 сек
@@ -173,7 +194,7 @@ class Engine(Generic[ExecuteInputDataType]):
         else:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
-    def get_process_result(self, request_id) -> EngineIOSchemas.process_output_data:
+    def get_process_result(self, request_id) -> ProcessOutputDataType:
         if request_id not in self._process_registry:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
@@ -208,7 +229,6 @@ class Engine(Generic[ExecuteInputDataType]):
         (логику метода определять в _on_execute)
         """
         _ = self, data, args, kwargs  # игнорировать variable unused
-
         async with self._execute_semaphore:  # защита от конфликта корутин (превышения лимита)
             # входные проверки
             if not self._running:
@@ -259,7 +279,8 @@ class Engine(Generic[ExecuteInputDataType]):
 
     # =============== STREAM =================
 
-    async def stream(self, callback: Callable[[Any], Awaitable[None]], data: Any, *args, **kwargs) -> None:
+    async def stream(self, callback: Callable[[Any], Awaitable[None]], data: StreamingInputData, *args,
+                     **kwargs) -> None:
         """
         Стриминговая обработка (real-time режим). Метод асинхронный
         -------------------------------------------------------
