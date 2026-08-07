@@ -15,7 +15,7 @@ def lifespan_factory(engine: Engine, settings: T) -> Callable:
     @asynccontextmanager
     async def lifespan(_application: FastAPI):
         yield
-        engine.stop()  # явная остановка компонента
+        await engine.stop()  # явная остановка компонента
         slots.slot14(settings.name)
 
     return lifespan

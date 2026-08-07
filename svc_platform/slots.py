@@ -264,8 +264,8 @@ def slot20(name, request_id: str, *args, **kwargs):
     slots_log(
         level='warning',
         subcomponent=name,
-        message=f'{name}.engine.process.interrupted',
-        event=f'engine.process.interrupted',
+        message=f'{name}.engine.process.interrupted.cancel',
+        event=f'engine.process.interrupted.cancel',
         request_id=request_id,
     )
 
@@ -277,5 +277,27 @@ def slot21(name, request_id: str, *args, **kwargs):
         subcomponent=name,
         message=f'{name}.engine.execute.interrupted',
         event=f'engine.execute.interrupted',
+        request_id=request_id,
+    )
+
+
+def slot22(name, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    slots_log(
+        level='warning',
+        subcomponent=name,
+        message=f'{name}.engine.process.cleanup',
+        event=f'engine.engine.process.cleanup',
+        request_id=request_id,
+    )
+
+
+def slot23(name, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    slots_log(
+        level='warning',
+        subcomponent=name,
+        message=f'{name}.engine.process задача `{request_id}` была отменена',
+        event=f'engine.process.interrupted.cancel',
         request_id=request_id,
     )

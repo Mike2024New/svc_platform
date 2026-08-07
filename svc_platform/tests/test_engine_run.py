@@ -2,18 +2,18 @@ from svc_platform.tests.conftest import EngineTestSuite
 
 
 class EngineTestRun(EngineTestSuite):
-    def test_start_stop(self, test_engine):
+    async def test_start_stop(self, test_engine):
         _ = self  # IDE узбагойся
         engine, parameters = test_engine
         assert engine.parameters['running'] == False
-        engine.start()
+        await engine.start()
         assert engine.parameters['running'] == True
-        engine.stop()
+        await engine.stop()
 
-    def test_double_start(self, test_engine):
+    async def test_double_start(self, test_engine):
         _ = self
         engine, parameters = test_engine
-        engine.start()
-        engine.start()
+        await engine.start()
+        await engine.start()
         assert engine.parameters['running'] == True
-        engine.stop()
+        await engine.stop()

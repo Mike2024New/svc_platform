@@ -1,17 +1,17 @@
-from svc_platform.engine import Engine
 from fastapi import APIRouter
-from svc_platform.api import routres_factory, lifespan_factory
 from svc_platform import slots
-
-"""
-Реализация серверной логики запуска компонента
-"""
-__all__ = ['api_factory']
-
 from dataclasses import dataclass
 from typing import Callable
+from svc_platform.api import routres_factory, lifespan_factory
+from svc_platform.engine import Engine
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.exception_handlers import ExceptionHandlers
+from svc_platform.schemas import SettingsSchemaType
+
+"""
+Сборщик стандартного api ( /start/, /stop/, /process/, /execute/, /stream/ )
+"""
+__all__ = ['api_factory', 'ApiFactoryResult']
 
 
 @dataclass
@@ -25,7 +25,8 @@ class ApiFactoryResult:
 
 
 def api_factory(
-        engine: Engine, settings,
+        engine: Engine,
+        settings: SettingsSchemaType,
         standart_api_schemas: EngineIOSchemas,
 ) -> ApiFactoryResult:
     """

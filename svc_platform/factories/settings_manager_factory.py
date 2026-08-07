@@ -1,19 +1,16 @@
 from typing import Any
-from typing import TypeVar
 from pathlib import Path
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_settings_manager import get_settings_manager
-from svc_platform.schemas import BaseSettings
+from svc_platform.schemas import SettingsSchemaType
 
 __all__ = ['settings_manager_factory']
 
-SettingsSchema = TypeVar('SettingsSchema', bound=BaseSettings)
-
 
 def settings_manager_factory(
-        settings_model: SettingsSchema,
+        settings_model: SettingsSchemaType,
         json_file_path: Path | None = None,
-) -> tuple[SettingsSchema, Any]:
+) -> tuple[SettingsSchemaType, Any]:
     """
     Возвращает объект с настройками settings, и управление настройками
     :param settings_model: Экземпляр класса pydantic модели (Настройки приложения)

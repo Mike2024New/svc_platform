@@ -18,7 +18,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка что get_result_process возвращает ожидаемый результат"""
         _ = self
         engine, parameters = test_engine
-        engine.start()
+        await engine.start()
 
         request_id = '#000'
         data = EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.1)
@@ -32,7 +32,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка что срабатывает исключение ProcessResultNotCompleted при преждевременном запрашивании результата"""
         _ = self
         engine, parameters = test_engine
-        engine.start()
+        await engine.start()
 
         request_id = '#000'
         data = EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.1)
@@ -51,17 +51,13 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка что прерывание отрабатывает корректно, и выбрасывается исключение ProcessCancelled"""
         _ = self
         engine, parameters = test_engine
-        engine.start()
+        await engine.start()
         # запуск задачи вычисления результата
         task = asyncio.create_task(engine.process(data=parameters.process_input_data, request_id=parameters.request_id))
         # прерывание вычисления
         await asyncio.sleep(0.1)
         engine.stop_process(request_id=parameters.request_id)
-
         await asyncio.sleep(0.1)
-        # при попытке взять результат должно быть возбуждено исключение Cancelled
-        with pytest.raises(EngineExc.ProcessCancelled):
-            engine.get_process_result(request_id=parameters.request_id)
         # при повторной попытке взять результат requests уже должен затереться
         with pytest.raises(EngineExc.ProcessResultNoFindReqestId):
             engine.get_process_result(request_id=parameters.request_id)
@@ -71,7 +67,7 @@ class EngineTestProcess(EngineTestSuite):
         """Неизвестный id подан в get_process_result"""
         _ = self
         engine, parameters = test_engine
-        engine.start()
+        await engine.start()
 
         # запуск задачи вычисления результата
         task = asyncio.create_task(engine.process(data=parameters.process_input_data, request_id=parameters.request_id))

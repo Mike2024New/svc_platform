@@ -12,7 +12,7 @@ def log_viewer_factory(
         only_keys: list[Filters] | None = None,
         separator: str = '     ',
         exclude_dirs: list[str] | None = None,
-):
+) -> LogViewer:
     """
 
     :param separator: разделитель столбцов

@@ -1,18 +1,16 @@
 import uuid
 from pathlib import Path
-from typing import TypeVar, Literal
+from typing import Literal
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_message_bus import message_bus_factory as message_bus
 from infrastructure_message_bus import MessagePrintSettings, FileLogSettings
-from svc_platform.schemas import BaseSettings
+from svc_platform.schemas import SettingsSchemaType
 
 __all__ = ['message_bus_factory']
 
-SettingsSchema = TypeVar('SettingsSchema', bound=BaseSettings)
-
 
 def message_bus_factory(
-        settings: SettingsSchema,
+        settings: SettingsSchemaType,
         file_log_json_path: Path | None = None,
         print_message: bool = True,
         print_message_date: bool = True,

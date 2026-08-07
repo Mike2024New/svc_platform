@@ -1,4 +1,4 @@
-import uuid, asyncio, atexit
+import uuid, asyncio
 from time import perf_counter
 from typing import Any, Awaitable, Callable, TypeVar, Generic
 from svc_platform import slots
@@ -34,6 +34,15 @@ ProcessOutputDataType = TypeVar('ProcessOutputDataType', bound=EngineIOSchemas.p
 StreamingInputDataType = TypeVar('StreamingInputDataType', bound=EngineIOSchemas.streaming_input_data)
 StreamingOutputDataType = TypeVar('StreamingOutputDataType', bound=EngineIOSchemas.streaming_output_data)
 
+from dataclasses import dataclass
+
+
+@dataclass
+class ProcessTask:
+    event: asyncio.Event
+    result: Any | None = None
+    completed_at: float | None = None
+
 
 class Engine(
     Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
@@ -50,27 +59,30 @@ class Engine(
             settings: BaseSettingsType,
             process_limit: int = 1,
             execute_limit: int = 1,
+            process_result_ttl: float = 10,
     ):
         """
         :param settings: системные настройки приложения (settings.json)
         """
-        atexit.register(self.stop)
         self._settings = settings
         self._running = False
         self.parameters: dict[str, Any] = {'running': self._running}
         self._on_set_parameters()
+        # состояние Engine
+        self._streaming_running = False
         # стоп сигналы
         self._stop_component = asyncio.Event()
         self._stop_streaming = asyncio.Event()
-        # регистраторы задач
-        self._process_registry: dict[str, Any] = {}
+
+        # настройка цепочки execute
         self._execute_registry: dict[str, Any] = {}
-        # лимиты задач
-        self._process_limit = process_limit
-        self._execute_limit = execute_limit
-        self._process_semaphore = asyncio.Semaphore(process_limit)
         self._execute_semaphore = asyncio.Semaphore(execute_limit)
-        self._streaming_running = False
+
+        # настройка цепочки process
+        self._process_registry: dict[str, ProcessTask] = {}
+        self._process_semaphore = asyncio.Semaphore(process_limit)
+        self._process_ttl = process_result_ttl
+        self._process_cleanup_task: asyncio.Task | None = None
 
     def _on_set_parameters(self):
         """логика записи параметров (например информация об используемом устройстве)"""
@@ -78,7 +90,7 @@ class Engine(
 
     # =============== START =================
 
-    def start(self, *args, **kwargs) -> None:
+    async def start(self, *args, **kwargs) -> None:
         """Запуск движка, выполняет тяжелую логику запуска (например whisper или llm), метод идемпотентен."""
         _ = self, args, kwargs  # игнорировать variable unused
         if self._running:
@@ -87,18 +99,22 @@ class Engine(
         self._running = True
         self.parameters['running'] = True
         try:
-            self._on_start(*args, **kwargs)
+            # запуск Engine
+            await self._on_start(*args, **kwargs)
             slots.slot1(self._settings.name, parameters=self.parameters)
+            # запуск наблюдателя за результатами процессов (чтобы удалять старые процессы)
+            if self._process_cleanup_task is None:
+                self._process_cleanup_task = asyncio.create_task(self._cleanup_old_processes())
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
             raise EngineExc.StartError(err)
 
-    def _on_start(self, *args, **kwargs) -> None:
+    async def _on_start(self, *args, **kwargs) -> None:
         pass
 
     # =============== STOP =================
 
-    def stop(self, *args, **kwargs) -> None:
+    async def stop(self, *args, **kwargs) -> None:
         """Остановка движка, метод идемпотентный."""
         _ = self, args, kwargs  # игнорировать variable unused
         if not self._running:
@@ -108,19 +124,41 @@ class Engine(
         self.parameters['running'] = False
         try:
             self.stop_stream()  # остановить стриминг если он продолжается
-            self._on_stop(*args, **kwargs)
-            slots.slot2(self._settings.name, parameters=self.parameters)
+            await self._on_stop(*args, **kwargs)
+            # сбросить все процессы.
             self._process_registry = {}
             self._execute_registry = {}
+            # остановка наблюдателя за результатами процессов (который удаляет старые процессы)
+            if self._process_cleanup_task is not None:
+                self._process_cleanup_task.cancel()
+                self._process_cleanup_task = None
+            slots.slot2(self._settings.name, parameters=self.parameters)
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
             raise EngineExc.StopError(err)
         # базовая логика, наследники должны вызывать super (либо без super для переопределения метода полностью)
 
-    def _on_stop(self, *args, **kwargs) -> None:
+    async def _on_stop(self, *args, **kwargs) -> None:
         pass
 
     # =============== PROCESS =================
+
+    async def _cleanup_old_processes(self):
+        """Удаление старых процессов (процессы результат по которым готов, но они лежат уже долго дольше ttl)"""
+        while self._running:
+            await asyncio.sleep(2)
+            now = perf_counter()
+
+            expired_ids = []
+            for req_id, data in self._process_registry.items():
+                if data.completed_at is not None:
+                    if (now - data.completed_at) > self._process_ttl:
+                        expired_ids.append(req_id)
+
+            # удаление устаревших задач
+            for req_id in expired_ids:
+                slots.slot22(self._settings.name, request_id=req_id)
+                self._process_registry.pop(req_id, None)
 
     async def process(
             self, data: ProcessInputDataType, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs
@@ -141,40 +179,49 @@ class Engine(
         (Не переопределять этот метод, бизнес логику реализовывать в _on_execute)
         """
         _ = self, data, args, kwargs  # игнорировать variable unused
+
+        if not self._running:
+            return None
+
+        if request_id in self._process_registry:
+            raise EngineExc.ProcessRequestIdAlreadyExists(f'Задача с `{request_id}` уже выполняется.')
+
         async with self._process_semaphore:  # защита от конфликта корутин (превышения лимита)
-            # входные проверки
-            if not self._running:
-                return None
-
-            if request_id in self._process_registry:
-                raise EngineExc.ProcessRequestIdAlreadyExists(f'Задача с `{request_id}` уже выполняется.')
-
             start_time = perf_counter()
             slots.slot16(name=self._settings.name, request_id=request_id)
             # создание задачи (процесса)
-            process = asyncio.Event()
-            self._process_registry[request_id] = {'event': process, 'result': None, 'cancelled': False}
+            self._process_registry[request_id] = ProcessTask(event=asyncio.Event())
             try:
                 # добавление ячейки результата (со своим процессом)
-                result = await self._on_process(data, process=process, *args, **kwargs)
+                process_task = asyncio.create_task(self._on_process(
+                    data, event=self._process_registry[request_id].event, *args, **kwargs)
+                )
+                result = await process_task
+                # если задача была отменена
+                if result is None:
+                    slots.slot23(name=self._settings.name, request_id=request_id)
+                    self._process_registry.pop(request_id, None)
+                    return None
                 end_time = round(perf_counter() - start_time, 2)
                 slots.slot17(name=self._settings.name, request_id=request_id, end_time=end_time)
                 # добавление результата в ячейку
                 if self._process_registry.get(request_id) is not None:
-                    self._process_registry[request_id]['result'] = result
-            except asyncio.CancelledError:
+                    self._process_registry[request_id].result = result
+                    self._process_registry[request_id].completed_at = perf_counter()
+            except asyncio.CancelledError:  # на случай отмены через task.cancel()
                 slots.slot20(name=self._settings.name, request_id=request_id)
                 self._process_registry.pop(request_id, None)  # если задача упала с ошибкой, то убрать её из списка
                 raise
-            except Exception as err:
+            except Exception as err:  # отлов любых ошибок
                 slots.slot5(name=self._settings.name, err=err)
                 raise
             finally:
-                if self._process_registry.get(request_id):
-                    self._process_registry[request_id]['event'].set()
+                # в любом случае испустить сигнал о завершении процесса
+                if request_id in self._process_registry:
+                    self._process_registry[request_id].event.set()
 
     async def _on_process(
-            self, data: ProcessInputDataType, process: asyncio.Event, *args, **kwargs
+            self, data: ProcessInputDataType, event: asyncio.Event, *args, **kwargs
     ) -> ProcessOutputDataType | None:
         """
         Вычислитель в режиме "запрос-ответ" (batch).
@@ -184,14 +231,14 @@ class Engine(
         возвращает результат в виде выходной схемы (с результатом который был передан в текст).
 
         :param data: Входные данные (схема ProcessInputDataType)
-        :param process: Event для прерывания выполнения извне (stop_process - бизнес логика должна отслеживать сигнал is_set())
+        :param process: event для прерывания выполнения извне (stop_process - бизнес логика должна отслеживать сигнал is_set())
         :return: Результат вычислений (ProcessOutputDataType) или None при прерывании
         """
         _ = self, data, args, kwargs
         for _ in range(data.iterations):
-            if process.is_set():  # досрочная остановка
+            if event.is_set():  # досрочная остановка
                 return None
-            await asyncio.sleep(data.step_time)  # иммитация длительной нагрузки вычислений
+            await asyncio.sleep(0.1)  # иммитация длительной нагрузки вычислений (чем больше итераций тем дольше)
         # возвращается заглушка с текстом прописанным в модели по умолчанию
         return EngineIOSchemas.process_output_data(result=data)
 
@@ -201,11 +248,10 @@ class Engine(
         :param request_id: id процесса
         :return: None
         """
-        if self._process_registry.get(request_id) is not None:
-            self._process_registry[request_id]['event'].set()
-            self._process_registry[request_id]['cancelled'] = True  # сообщить что задача отменена
-        else:
+        if request_id not in self._process_registry:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
+
+        self._process_registry[request_id].event.set()
 
     def get_process_result(self, request_id) -> ProcessOutputDataType:
         """
@@ -216,15 +262,11 @@ class Engine(
         if request_id not in self._process_registry:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
-        if self._process_registry[request_id]['cancelled']:
-            self._process_registry.pop(request_id)  # утилизация задачи
-            raise EngineExc.ProcessCancelled(f'Задача `{request_id}` была отменена.')
-
-        if self._process_registry[request_id]['result'] is None:
+        if self._process_registry[request_id].result is None:
             raise EngineExc.ProcessResultNotCompleted('результат ещё не готов')
 
-        result = self._process_registry[request_id]['result']
-        self._process_registry.pop(request_id)  # утилизация задачи
+        result = self._process_registry[request_id].result
+        self._process_registry.pop(request_id)
         return result
 
     # =============== EXECUTE =================
@@ -372,7 +414,7 @@ if __name__ == '__main__':
         slots_init(callback=None, enable=True)
         current_settings, _ = settings_manager_factory(settings_model=SettingsExtend())
         engine = engine_factory(engine_class=Engine, settings=current_settings)
-        engine.start()
+        await engine.start()
         request_id = '#000'
         data = EngineIOSchemas.execute_input_data(step_time=0.5)
         task = asyncio.create_task(engine.execute(request_id=request_id, data=data))

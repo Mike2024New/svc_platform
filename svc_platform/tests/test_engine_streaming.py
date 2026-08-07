@@ -7,7 +7,7 @@ class EngineTestStreaming(EngineTestSuite):
         """Проверка что стриминг вызывается и не падает, а также останавливается по команде stop"""
         _ = self
         engine, parameters = test_engine
-        engine.start()
+        await engine.start()
 
         async def callback(x):
             _ = x

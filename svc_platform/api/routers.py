@@ -37,7 +37,7 @@ def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         if engine.parameters['running']:
             raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
         try:
-            engine.start()
+            await engine.start()
         except EngineExc.StartError:
             raise
         return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
@@ -48,7 +48,7 @@ def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
     async def stop(_is_running: bool = Depends(is_component_running)) -> dict:
         """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
         try:
-            engine.stop()
+            await engine.stop()
             return {'message': f'Компонент `{settings.name}` остановлен.', 'parameters': engine.parameters, }
         except EngineExc.StopError:
             raise
