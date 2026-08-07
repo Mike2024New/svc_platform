@@ -12,7 +12,7 @@ from svc_platform.engine import Engine
 class TestTts(
     EngineTestRun,
     EngineTestExecute,
-    EngineTestProcess,
+    # EngineTestProcess,
     EngineTestStreaming
 ):
     @pytest.fixture

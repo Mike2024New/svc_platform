@@ -7,10 +7,13 @@ from typing import Any
 from svc_platform.engine import Engine
 from svc_platform import slots
 from svc_platform.engine import EngineExc
+from svc_platform.schemas import EngineIOSchemas
 
 
-def routres_factory(engine: Engine, settings) -> list[APIRouter]:
+def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas) -> list[APIRouter]:
     app_router = APIRouter(tags=[settings.name])
+
+    # =============== DEPENDENCIES ========================
 
     def is_component_running() -> bool:
         if not engine.parameters['running']:
@@ -21,10 +24,14 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
             )
         return True
 
+    # =============== PARAMETERS ========================
+
     @app_router.get('/parameters/', summary='Информация о параметрах компонента', status_code=status.HTTP_200_OK)
     async def parameters() -> dict:
         """Текущие параметры компонента"""
         return engine.parameters
+
+    # =============== START ========================
 
     @app_router.get('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
     async def start() -> dict:
@@ -34,6 +41,8 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
         engine.start()
         return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
 
+    # =============== STOP ========================
+
     @app_router.get('/stop/', summary='Остановка компонента', status_code=status.HTTP_200_OK)
     async def stop(_is_running: bool = Depends(is_component_running)) -> dict:
         """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
@@ -42,6 +51,15 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
             'message': f'Компонент `{settings.name}` остановлен.',
             'parameters': engine.parameters,
         }
+
+    # =============== PROCESS ========================
+
+    @app_router.post('/process/')
+    async def process(data: engine_io_schemas.process_input_data, _is_running: bool = Depends(is_component_running)):
+        """Запуск процесса вычисления входных данных. Результат можно посмотреть на /process_result/ по готовности"""
+        request_id = str(uuid.uuid4())[:8]
+        asyncio.create_task(engine.process(data, request_id=request_id))
+        return {'message': 'process started, Show result -> /process_result/', 'request_id': request_id}
 
     @app_router.get('/process_stop/')
     async def process_stop(request_id: str):
@@ -61,21 +79,28 @@ def routres_factory(engine: Engine, settings) -> list[APIRouter]:
         except EngineExc.ProcessResultNoFindReqestId as err:
             return {'status': 'error', 'message': str(err)}
 
-    @app_router.post('/process/')
-    async def process(data, _is_running: bool = Depends(is_component_running)):
-        """Запуск процесса вычисления входных данных. Результат можно посмотреть на /process_result/ по готовности"""
-        request_id = str(uuid.uuid4())[:8]
-        asyncio.create_task(engine.process(data, request_id=request_id))
-        return {'message': 'process started, Show result -> /process_result/', 'request_id': request_id}
+    @app_router.get('/demo/', response_model=engine_io_schemas.process_output_data)
+    def demo():
+        result = engine_io_schemas.process_output_data(text='stub')
+        return result
 
-    @app_router.get('/execute_stop/')
-    async def execute_stop():
-        engine.stop_execute()
+    # =============== EXECUTE ========================
 
     @app_router.post('/execute/')
-    async def execute(data, _is_running: bool = Depends(is_component_running)):
+    async def execute(data: engine_io_schemas.execute_input_data,
+                      _is_running: bool = Depends(is_component_running)):
         asyncio.create_task(engine.execute(data))
         return {'message': 'execute запущен', 'result': None}
+
+    @app_router.get('/execute_stop/')
+    async def execute_stop(request_id: str):
+        engine.stop_execute(request_id=request_id)
+
+    # =============== STREAM (/WS) ========================
+
+    @app_router.get('/streaming/')
+    async def streaming():
+        return {'message': 'Подключиться к стримингу можно через `ws://localhost:<порт сервера>/ws`'}
 
     @app_router.websocket('/ws')
     async def streaming(websocket: WebSocket):

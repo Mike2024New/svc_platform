@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable, TypeVar
 from svc_platform import slots
 from svc_platform.schemas import BaseSettings
 from svc_platform.engine.exc import EngineExc
+from svc_platform.schemas import EngineIOSchemas
 
 __all__ = ['Engine']
 
@@ -17,10 +18,18 @@ T = TypeVar('T', bound=BaseSettings)
 Добавить статусы (для execute/process), чтобы по api можно было их запрашивать
 Добавить очистку памяти (процесс) по таймауту, иначе утечка ресурсов.
 """
+from typing import Generic
+
+ExecuteInputDataType = TypeVar('ExecuteInputDataType', bound=EngineIOSchemas.execute_input_data)
 
 
-class Engine:
-    def __init__(self, settings: BaseSettings, process_limit: int = 1, execute_limit: int = 1):
+class Engine(Generic[ExecuteInputDataType]):
+    def __init__(
+            self,
+            settings: BaseSettings,
+            process_limit: int = 1,
+            execute_limit: int = 1,
+    ):
         """
 
         :param settings: системные настройки приложения (settings.json)
@@ -94,7 +103,9 @@ class Engine:
 
     # =============== PROCESS =================
 
-    async def process(self, data: Any, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs) -> None:
+    async def process(
+            self, data: EngineIOSchemas.process_input_data, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs
+    ) -> None:
         """
         (логику метода определять в _on_execute)
         Блокирующая обработка (batch режим).
@@ -143,14 +154,17 @@ class Engine:
                 if self._process_registry.get(request_id):
                     self._process_registry[request_id]['event'].set()
 
-    async def _on_process(self, data: Any, process: asyncio.Event, *args, **kwargs) -> Any | None:
+    async def _on_process(
+            self, data: EngineIOSchemas.process_input_data, process: asyncio.Event, *args, **kwargs
+    ) -> EngineIOSchemas.process_output_data | None:
         """Процесс вычислений, например transcribate у whisper (перевод аудио в текст). Может быть прерван через stop_process"""
         _ = self, data, args, kwargs
         for _ in range(5):  # 5 итераций по 0.5 сек -> 2.5 сек
             if process.is_set():  # досрочная остановка
                 return None
             await asyncio.sleep(0.5)  # иммитация длительной нагрузки вычислений
-        return 'stub'  # для непереопределенного метода будет возвращаться заглушка
+        # возвращается заглушка с текстом прописанным в модели по умолчанию
+        return EngineIOSchemas.process_output_data()
 
     def stop_process(self, request_id: str) -> None:
         if self._process_registry.get(request_id) is not None:
@@ -159,7 +173,7 @@ class Engine:
         else:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
-    def get_process_result(self, request_id):
+    def get_process_result(self, request_id) -> EngineIOSchemas.process_output_data:
         if request_id not in self._process_registry:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
@@ -176,7 +190,8 @@ class Engine:
 
     # =============== EXECUTE =================
 
-    async def execute(self, data: Any, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs) -> None:
+    async def execute(self, data: ExecuteInputDataType, request_id: str = str(uuid.uuid4())[:8], *args,
+                      **kwargs) -> None:
         """
         (логику метода определять в _on_execute)
         Исполнительный метод (action режим).
@@ -223,7 +238,7 @@ class Engine:
                     self._execute_registry[request_id]['event'].set()
                 self._execute_registry.pop(request_id, None)  # удалить задачу
 
-    async def _on_execute(self, data: Any, process: asyncio.Event, *args, **kwargs) -> None:
+    async def _on_execute(self, data: ExecuteInputDataType, process: asyncio.Event, *args, **kwargs) -> None:
         """Метод исполнительный, например tts. Следит за состоянием переменной self._stop_execute.is_set()"""
         _ = self, data, args, kwargs
         for i in 'This is a #stub. Example TTS Voice synthesis in progress. Long text for example.'.split():
@@ -316,7 +331,8 @@ if __name__ == '__main__':
         current_settings, _ = settings_manager_factory(settings_model=SettingsExtend())
         engine = engine_factory(engine_class=Engine, settings=current_settings)
         engine.start()
-        task1 = asyncio.create_task(engine.execute(data=1, request_id='#000'))
+        task1 = asyncio.create_task(
+            engine.execute(data=EngineIOSchemas.execute_input_data(text='123'), request_id='#000'))
         await asyncio.sleep(0.4)
         engine.stop_execute(request_id='#000')
         await task1

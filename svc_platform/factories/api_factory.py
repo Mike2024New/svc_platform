@@ -10,6 +10,7 @@ __all__ = ['api_factory']
 
 from dataclasses import dataclass
 from typing import Callable
+from svc_platform.schemas import EngineIOSchemas
 
 
 @dataclass
@@ -22,16 +23,22 @@ class ApiFactoryResult:
 
 
 def api_factory(
-        engine: Engine, settings
+        engine: Engine, settings,
+        standart_api_schemas: EngineIOSchemas,
 ) -> ApiFactoryResult:
     """
     Сборщик всех фабрик генерирующих api приложения (при необходимости можно эти объекты переопределять в ApiFactoryResult)
+    :param standart_api_schemas: Pydantic схемы для /process/, /execute/, /stream/
     :param settings: настройки приложения
     :param engine: компонент выполняющий полезную нагрузку
     :return: объект для запуска сервера -> ApiFactoryResult
     """
     try:
-        routers_list = routres_factory(engine=engine, settings=settings)
+        routers_list = routres_factory(
+            engine=engine,
+            settings=settings,
+            engine_io_schemas=standart_api_schemas
+        )
         lifespan = lifespan_factory(engine=engine, settings=settings)
     except Exception as err:
         raise RuntimeError(f'Ошибка сборки api: {err}')
