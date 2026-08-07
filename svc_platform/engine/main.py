@@ -42,6 +42,7 @@ class Engine(
         ProcessInputDataType,
         ProcessOutputDataType,
         StreamingInputDataType,
+        StreamingOutputDataType,
     ]
 ):
     def __init__(
