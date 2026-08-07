@@ -1,9 +1,7 @@
 import asyncio
 import uuid
-
 from fastapi import APIRouter, status, Depends, HTTPException, WebSocket
 from starlette.websockets import WebSocketDisconnect
-from typing import Any
 from svc_platform.engine import Engine
 from svc_platform import slots
 from svc_platform.engine import EngineExc
@@ -29,7 +27,7 @@ def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
     @app_router.get('/parameters/', summary='Информация о параметрах компонента', status_code=status.HTTP_200_OK)
     async def parameters() -> dict:
         """Текущие параметры компонента"""
-        return engine.parameters
+        return {'message': f'Параметры engine {settings.name}', 'parameters': engine.parameters}
 
     # =============== START ========================
 
@@ -38,7 +36,10 @@ def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         """Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
         if engine.parameters['running']:
             raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
-        engine.start()
+        try:
+            engine.start()
+        except EngineExc.StartError:
+            raise
         return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
 
     # =============== STOP ========================
@@ -46,61 +47,60 @@ def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
     @app_router.get('/stop/', summary='Остановка компонента', status_code=status.HTTP_200_OK)
     async def stop(_is_running: bool = Depends(is_component_running)) -> dict:
         """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
-        engine.stop()
-        return {
-            'message': f'Компонент `{settings.name}` остановлен.',
-            'parameters': engine.parameters,
-        }
+        try:
+            engine.stop()
+            return {'message': f'Компонент `{settings.name}` остановлен.', 'parameters': engine.parameters, }
+        except EngineExc.StopError:
+            raise
 
     # =============== PROCESS ========================
 
-    @app_router.post('/process/')
+    @app_router.post('/process/', status_code=status.HTTP_202_ACCEPTED)
     async def process(data: engine_io_schemas.process_input_data, _is_running: bool = Depends(is_component_running)):
         """Запуск процесса вычисления входных данных. Результат можно посмотреть на /process_result/ по готовности"""
         request_id = str(uuid.uuid4())[:8]
         asyncio.create_task(engine.process(data, request_id=request_id))
-        return {'message': 'process started, Show result -> /process_result/', 'request_id': request_id}
+        return {'message': f'Процесс {request_id} запущен', 'request_id': request_id}
 
-    @app_router.get('/process_stop/')
+    @app_router.get('/process_stop/', status_code=status.HTTP_200_OK)
     async def process_stop(request_id: str):
-        engine.stop_process(request_id=request_id)
-        return {'message': 'Процесс остановлен'}
+        try:
+            engine.stop_process(request_id=request_id)
+            return {'message': f'Процесс {request_id} остановлен'}
+        except EngineExc.ProcessResultNoFindReqestId:
+            raise
 
-    @app_router.get('/process_result/')
-    async def process_result(request_id: str):
+    @app_router.get('/process_result/', status_code=status.HTTP_200_OK)
+    async def process_result(request_id: str) -> dict[str, str | engine_io_schemas.process_output_data]:
         """Получение результата по request_id (коду который вернул /process/)"""
         try:
             result = engine.get_process_result(request_id=request_id)
-            return {'status': 'done', 'result': result}
-        except EngineExc.ProcessCancelled as err:
-            return {'status': 'error', 'message': str(err)}
-        except EngineExc.ProcessResultNotCompleted as err:
-            return {'status': 'pending', 'message': str(err)}
-        except EngineExc.ProcessResultNoFindReqestId as err:
-            return {'status': 'error', 'message': str(err)}
-
-    @app_router.get('/demo/', response_model=engine_io_schemas.process_output_data)
-    def demo():
-        result = engine_io_schemas.process_output_data(text='stub')
-        return result
+            return {'message': f'Результат для {request_id}', 'result': result}
+        except (
+                EngineExc.ProcessCancelled,  # процесс был отменен
+                EngineExc.ProcessResultNotCompleted,  # процесс не завершен (вычисления ещё не готовы)
+                EngineExc.ProcessResultNoFindReqestId,  # неизвестный request_id, нет такой задачи
+        ):
+            raise
 
     # =============== EXECUTE ========================
 
-    @app_router.post('/execute/')
+    @app_router.post('/execute/', status_code=status.HTTP_200_OK)
     async def execute(data: engine_io_schemas.execute_input_data,
                       _is_running: bool = Depends(is_component_running)):
-        asyncio.create_task(engine.execute(data))
-        return {'message': 'execute запущен', 'result': None}
+        request_id = str(uuid.uuid4())[:8]
+        asyncio.create_task(engine.execute(data, request_id=request_id))
+        return {'message': f'execute {request_id} запущен', 'request_id': request_id}
 
-    @app_router.get('/execute_stop/')
+    @app_router.get('/execute_stop/', status_code=status.HTTP_200_OK)
     async def execute_stop(request_id: str):
-        engine.stop_execute(request_id=request_id)
+        try:
+            engine.stop_execute(request_id=request_id)
+            return {'message': f'execute {request_id} остановлен'}
+        except EngineExc.ExecuteNoFindReqestId:
+            raise
 
-    # =============== STREAM (/WS) ========================
-
-    @app_router.get('/streaming/')
-    async def streaming():
-        return {'message': 'Подключиться к стримингу можно через `ws://localhost:<порт сервера>/ws`'}
+    # =============== STREAMING (/WS) ========================
 
     @app_router.websocket('/ws')
     async def streaming(websocket: WebSocket):
@@ -113,9 +113,10 @@ def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 await websocket.send_json({'type': 'close', 'msg': 'Connection closed, server not started.'})
                 return
 
-            data = await websocket.receive_json()  # получение входных данных от клиента
+            # получение входных данных от клиента (с валидацией)
+            data = engine_io_schemas.streaming_input_data(**await websocket.receive_json())
 
-            async def async_callback(chunk_in: Any):
+            async def async_callback(chunk_in: engine_io_schemas.streaming_output_data):
                 """обработка чанков (отправка клиенту)"""
                 nonlocal closed_by_client
                 try:

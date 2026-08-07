@@ -268,3 +268,14 @@ def slot20(name, request_id: str, *args, **kwargs):
         event=f'engine.process.interrupted',
         request_id=request_id,
     )
+
+
+def slot21(name, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    slots_log(
+        level='warning',
+        subcomponent=name,
+        message=f'{name}.engine.execute.interrupted',
+        event=f'engine.execute.interrupted',
+        request_id=request_id,
+    )

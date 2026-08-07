@@ -1,12 +1,9 @@
-import uuid
-import asyncio
-import threading, atexit
+import uuid, asyncio, atexit
 from time import perf_counter
 from typing import Any, Awaitable, Callable, TypeVar, Generic
 from svc_platform import slots
-from svc_platform.schemas import BaseSettings
 from svc_platform.engine.exc import EngineExc
-from svc_platform.schemas import EngineIOSchemas
+from svc_platform.schemas import BaseSettings, EngineIOSchemas
 
 __all__ = ['Engine']
 
@@ -34,7 +31,8 @@ BaseSettingsType = TypeVar('BaseSettingsType', bound=BaseSettings)
 ExecuteInputDataType = TypeVar('ExecuteInputDataType', bound=EngineIOSchemas.execute_input_data)
 ProcessInputDataType = TypeVar('ProcessInputDataType', bound=EngineIOSchemas.process_input_data)
 ProcessOutputDataType = TypeVar('ProcessOutputDataType', bound=EngineIOSchemas.process_output_data)
-StreamingInputData = TypeVar('StreamingInputData', bound=EngineIOSchemas.streaming_input_data)
+StreamingInputDataType = TypeVar('StreamingInputDataType', bound=EngineIOSchemas.streaming_input_data)
+StreamingOutputDataType = TypeVar('StreamingOutputDataType', bound=EngineIOSchemas.streaming_output_data)
 
 
 class Engine(
@@ -43,7 +41,7 @@ class Engine(
         ExecuteInputDataType,
         ProcessInputDataType,
         ProcessOutputDataType,
-        StreamingInputData,
+        StreamingInputDataType,
     ]
 ):
     def __init__(
@@ -61,9 +59,8 @@ class Engine(
         self.parameters: dict[str, Any] = {'running': self._running}
         self._on_set_parameters()
         # стоп сигналы
-        self._stop_component = threading.Event()
+        self._stop_component = asyncio.Event()
         self._stop_streaming = asyncio.Event()
-        self._stop_process = threading.Event()
         # регистраторы задач
         self._process_registry: dict[str, Any] = {}
         self._execute_registry: dict[str, Any] = {}
@@ -93,7 +90,7 @@ class Engine(
             slots.slot1(self._settings.name, parameters=self.parameters)
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
-            raise err
+            raise EngineExc.StartError(err)
 
     def _on_start(self, *args, **kwargs) -> None:
         pass
@@ -116,7 +113,7 @@ class Engine(
             self._execute_registry = {}
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
-            raise err
+            raise EngineExc.StopError(err)
         # базовая логика, наследники должны вызывать super (либо без super для переопределения метода полностью)
 
     def _on_stop(self, *args, **kwargs) -> None:
@@ -128,7 +125,7 @@ class Engine(
             self, data: ProcessInputDataType, request_id: str = str(uuid.uuid4())[:8], *args, **kwargs
     ) -> None:
         """
-        (логику метода определять в _on_execute)
+        (Не переопределять этот метод, бизнес логику реализовывать в _on_execute)
         Блокирующая обработка (batch режим).
         -------------------------------------------------------
         Паттерн: Один запрос → Один ответ
@@ -140,7 +137,7 @@ class Engine(
         :param request_id: id запроса (например для цепочки http запросов)
         :param data: Входные данные
         :return: Результат обработки или None если сервис не запущен
-        (логику метода определять в _on_execute)
+        (Не переопределять этот метод, бизнес логику реализовывать в _on_execute)
         """
         _ = self, data, args, kwargs  # игнорировать variable unused
         async with self._process_semaphore:  # защита от конфликта корутин (превышения лимита)
@@ -178,16 +175,31 @@ class Engine(
     async def _on_process(
             self, data: ProcessInputDataType, process: asyncio.Event, *args, **kwargs
     ) -> ProcessOutputDataType | None:
-        """Процесс вычислений, например transcribate у whisper (перевод аудио в текст). Может быть прерван через stop_process"""
+        """
+        Вычислитель в режиме "запрос-ответ" (batch).
+        В наследниках переопределяется под конкретную бизнес-логику (STT, TTS, LLM и т.д.).
+        Сейчас пример заглушка:
+        Принимает входные данные, имитирует длительную обработку (data.iterations * data.step_time) с возможностью прерывания,
+        возвращает результат в виде выходной схемы (с результатом который был передан в текст).
+
+        :param data: Входные данные (схема ProcessInputDataType)
+        :param process: Event для прерывания выполнения извне (stop_process - бизнес логика должна отслеживать сигнал is_set())
+        :return: Результат вычислений (ProcessOutputDataType) или None при прерывании
+        """
         _ = self, data, args, kwargs
-        for _ in range(5):  # 5 итераций по 0.5 сек -> 2.5 сек
+        for _ in range(data.iterations):
             if process.is_set():  # досрочная остановка
                 return None
-            await asyncio.sleep(0.5)  # иммитация длительной нагрузки вычислений
+            await asyncio.sleep(data.step_time)  # иммитация длительной нагрузки вычислений
         # возвращается заглушка с текстом прописанным в модели по умолчанию
-        return EngineIOSchemas.process_output_data()
+        return EngineIOSchemas.process_output_data(result=data)
 
     def stop_process(self, request_id: str) -> None:
+        """
+        Остановка запущенного процесса вычислений (batch режима) по request_id, если такая задача была запущена
+        :param request_id: id процесса
+        :return: None
+        """
         if self._process_registry.get(request_id) is not None:
             self._process_registry[request_id]['event'].set()
             self._process_registry[request_id]['cancelled'] = True  # сообщить что задача отменена
@@ -195,6 +207,11 @@ class Engine(
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
     def get_process_result(self, request_id) -> ProcessOutputDataType:
+        """
+        Получение результата вычисления процесса по request_id, если не готово или отменено, возбуждаются исключения
+        :param request_id: id процесса
+        :return:
+        """
         if request_id not in self._process_registry:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
@@ -247,7 +264,6 @@ class Engine(
                 end_time = round(perf_counter() - start_time, 2)
                 slots.slot19(name=self._settings.name, request_id=request_id, end_time=end_time)
             except asyncio.CancelledError:
-                print(f'Остановка приложения')
                 raise
             except Exception as err:
                 slots.slot6(name=self._settings.name, err=err)
@@ -261,8 +277,8 @@ class Engine(
     async def _on_execute(self, data: ExecuteInputDataType, process: asyncio.Event, *args, **kwargs) -> None:
         """Метод исполнительный, например tts. Следит за состоянием переменной self._stop_execute.is_set()"""
         _ = self, data, args, kwargs
-        for i in 'This is a #stub. Example TTS Voice synthesis in progress. Long text for example.'.split():
-            await asyncio.sleep(0.1)
+        for i in data.text.split():
+            await asyncio.sleep(data.step_time)
 
             # Остановка задачи (в классах наследниках этот же механизм)
             if process.is_set():
@@ -276,11 +292,14 @@ class Engine(
 
         self._execute_registry[request_id]['event'].set()
         self._execute_registry[request_id]['cancelled'] = True
+        slots.slot21(name=self._settings.name, request_id=request_id)
 
     # =============== STREAM =================
 
-    async def stream(self, callback: Callable[[Any], Awaitable[None]], data: StreamingInputData, *args,
-                     **kwargs) -> None:
+    async def stream(
+            self, callback: Callable[[StreamingOutputDataType], Awaitable[None]], data: StreamingInputDataType, *args,
+            **kwargs
+    ) -> None:
         """
         Стриминговая обработка (real-time режим). Метод асинхронный
         -------------------------------------------------------
@@ -324,7 +343,7 @@ class Engine(
             self._streaming_running = False
             self._stop_streaming.clear()
 
-    async def _on_stream(self, data, callback, *args, **kwargs) -> None:
+    async def _on_stream(self, data: StreamingInputDataType, callback, *args, **kwargs) -> None:
         _ = self, data, args, kwargs  # игнорировать variable unused
         # временная заглушка, имитирующая полезную нагрузку
         i = 0
@@ -347,16 +366,18 @@ if __name__ == '__main__':
     async def main():
         from svc_platform.factories import settings_manager_factory, engine_factory
         from svc_platform.slots import slots_init
+        from svc_platform.schemas import EngineIOSchemas
 
-        slots_init(callback=None, enable=False)
+        slots_init(callback=None, enable=True)
         current_settings, _ = settings_manager_factory(settings_model=SettingsExtend())
         engine = engine_factory(engine_class=Engine, settings=current_settings)
         engine.start()
-        task1 = asyncio.create_task(
-            engine.execute(data=EngineIOSchemas.execute_input_data(text='123'), request_id='#000'))
-        await asyncio.sleep(0.4)
-        engine.stop_execute(request_id='#000')
-        await task1
+        request_id = '#000'
+        data = EngineIOSchemas.execute_input_data(step_time=0.5)
+        task = asyncio.create_task(engine.execute(request_id=request_id, data=data))
+        # await asyncio.sleep(2)
+        # engine.stop_execute(request_id=request_id)
+        await task
 
 
     asyncio.run(main())

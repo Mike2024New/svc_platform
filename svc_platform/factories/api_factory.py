@@ -11,6 +11,7 @@ __all__ = ['api_factory']
 from dataclasses import dataclass
 from typing import Callable
 from svc_platform.schemas import EngineIOSchemas
+from svc_platform.api.exception_handlers import ExceptionHandlers
 
 
 @dataclass
@@ -20,6 +21,7 @@ class ApiFactoryResult:
     lifespan: Callable
     callback_start: Callable
     callback_start_error: Callable
+    exception_handlers: ExceptionHandlers
 
 
 def api_factory(
@@ -49,4 +51,5 @@ def api_factory(
         lifespan=lifespan,  # можно переопределить на выходе
         callback_start_error=lambda error_data: slots.slot15(name=settings.name, err=error_data),
         callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
+        exception_handlers=ExceptionHandlers(),  # системный обработчик исключений
     )

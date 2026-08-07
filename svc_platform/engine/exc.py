@@ -1,4 +1,10 @@
 class EngineExc:
+    class StartError(RuntimeError):
+        pass
+
+    class StopError(RuntimeError):
+        pass
+
     class ProcessResultNotCompleted(RuntimeError):
         pass
 

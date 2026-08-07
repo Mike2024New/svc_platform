@@ -2,6 +2,7 @@ import asyncio
 import pytest
 from svc_platform.engine import EngineExc
 from svc_platform.tests.conftest import EngineTestSuite
+from svc_platform.schemas import EngineIOSchemas
 
 """
 Тесты для проверки цепочки process движка, взаимодействие между методами:
@@ -16,68 +17,64 @@ class EngineTestProcess(EngineTestSuite):
     async def test_process_get_result(self, test_engine):
         """Проверка что get_result_process возвращает ожидаемый результат"""
         _ = self
-        engine = test_engine
+        engine, parameters = test_engine
         engine.start()
 
         request_id = '#000'
-        on_process_result = 'stub'
-        # установка тестовых параметров по умолчанию
+        data = EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.1)
         # запуск задачи вычисления результата
-        task = asyncio.create_task(engine.process(data=1, request_id=request_id))
+        task = asyncio.create_task(engine.process(data=data, request_id=request_id))
         await task
         result = engine.get_process_result(request_id=request_id)
-        assert result == on_process_result
+        assert result.result == data
 
     async def test_process_result_not_completed(self, test_engine):
         """Проверка что срабатывает исключение ProcessResultNotCompleted при преждевременном запрашивании результата"""
         _ = self
-        engine = test_engine
+        engine, parameters = test_engine
         engine.start()
 
         request_id = '#000'
-        on_process_result = 'stub'
+        data = EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.1)
         # запуск задачи вычисления результата
-        task = asyncio.create_task(engine.process(data=1, request_id=request_id))
+        task = asyncio.create_task(engine.process(data=data, request_id=request_id))
         # попытка взять результат раньше готовности
         await asyncio.sleep(0.1)
         with pytest.raises(EngineExc.ProcessResultNotCompleted):
             engine.get_process_result(request_id=request_id)
         await task
         result = engine.get_process_result(request_id=request_id)
-        assert result == on_process_result
+        assert result.result == data
 
     # проверить тест прерывания
     async def test_process_interrupted(self, test_engine):
         """Проверка что прерывание отрабатывает корректно, и выбрасывается исключение ProcessCancelled"""
         _ = self
-        engine = test_engine
+        engine, parameters = test_engine
         engine.start()
-
-        request_id = '#000'
         # запуск задачи вычисления результата
-        task = asyncio.create_task(engine.process(data=1, request_id=request_id))
+        task = asyncio.create_task(engine.process(data=parameters.process_input_data, request_id=parameters.request_id))
         # прерывание вычисления
         await asyncio.sleep(0.1)
-        engine.stop_process(request_id=request_id)
+        engine.stop_process(request_id=parameters.request_id)
 
         await asyncio.sleep(0.1)
         # при попытке взять результат должно быть возбуждено исключение Cancelled
         with pytest.raises(EngineExc.ProcessCancelled):
-            engine.get_process_result(request_id=request_id)
+            engine.get_process_result(request_id=parameters.request_id)
         # при повторной попытке взять результат requests уже должен затереться
         with pytest.raises(EngineExc.ProcessResultNoFindReqestId):
-            engine.get_process_result(request_id=request_id)
+            engine.get_process_result(request_id=parameters.request_id)
         await task
 
     async def test_process_unknow_request_id(self, test_engine):
         """Неизвестный id подан в get_process_result"""
         _ = self
-        engine = test_engine
+        engine, parameters = test_engine
         engine.start()
 
-        request_id = '#000'
         # запуск задачи вычисления результата
-        task = asyncio.create_task(engine.process(data=1, request_id=request_id))
+        task = asyncio.create_task(engine.process(data=parameters.process_input_data, request_id=parameters.request_id))
         await asyncio.sleep(0.1)
         # при неизвестном request_id должно выстрелить исключение
         with pytest.raises(EngineExc.ProcessResultNoFindReqestId):
