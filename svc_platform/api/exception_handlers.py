@@ -9,8 +9,8 @@ from svc_platform.engine.exc import EngineExc
 
 
 class ExceptionHandlers(ExceptionHandlersProtocol):
-    @staticmethod
-    def register(app: FastAPI):
+    @classmethod
+    def register(cls, app: FastAPI):
         """В этом методе прописать нужные обработчики (применяются после middleware)"""
 
         @app.exception_handler(ZeroDivisionError)
@@ -96,3 +96,13 @@ class ExceptionHandlers(ExceptionHandlersProtocol):
             )
 
         ...  # другие обработчики ...
+
+
+if __name__ == '__main__':
+    class ExceptionHandlersExt(ExceptionHandlersProtocol):
+        @staticmethod
+        def register(app: FastAPI) -> None:
+            super().register(app=app)
+
+
+    ex = ExceptionHandlersExt()

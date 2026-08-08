@@ -19,6 +19,7 @@ settings, settings_manager = settings_manager_factory(settings_model=SettingsExa
 message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
+# между api_modul и server можно добавить кастомные роутеры и расширить класс exception_handler
 server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
 log_viewer = log_viewer_factory()
 slots_init(callback=message_bus_add)

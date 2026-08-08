@@ -1,4 +1,4 @@
-from infrastructure_server import server_factory_v2
+from infrastructure_server import server_factory_v2, ServerV2
 from fastapi import APIRouter
 from svc_platform.factories.api_factory import ApiFactoryResult
 from svc_platform.schemas import SettingsSchemaType
@@ -8,7 +8,7 @@ def server_factory(
         settings: SettingsSchemaType,
         api_modul: ApiFactoryResult,
         routers_list: list[APIRouter] | None = None, middleware_err_enable: bool = True
-):
+) -> ServerV2:
     """
 
     :param routers_list:  кастомные роутеры (расширение стандартных роутеров, например для БД сервисов)
@@ -32,7 +32,7 @@ def server_factory(
         # lifespan (явная остановка компонентов)
         lifespan=api_modul.lifespan,
         middleware_err_enable=middleware_err_enable,
-        exception_handlers=api_modul.exception_handlers,  # подключение кастомных обработчиков ошибок
+        exception_handlers=api_modul.exception_handlers_class(),  # подключение кастомных обработчиков ошибок
         # middlewares_list=api_modul.middlewares_list,
     )
     return server

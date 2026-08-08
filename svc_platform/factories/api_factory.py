@@ -16,12 +16,12 @@ __all__ = ['api_factory', 'ApiFactoryResult']
 
 @dataclass
 class ApiFactoryResult:
-    engine: Engine
-    routers_list: list[APIRouter]
+    engine: Engine  # экземпляр класса движка
+    routers_list: list[APIRouter]  # системный роутер с маршрутами /process/, /execute/, /stream/
     lifespan: Callable
-    callback_start: Callable
-    callback_start_error: Callable
-    exception_handlers: ExceptionHandlers
+    callback_start: Callable  # функция которая выполняется после старта движка
+    callback_start_error: Callable  # функция которая выполняется в случае ошибки запуска движка
+    exception_handlers_class: type(ExceptionHandlers)  # класс, который можно расширить между api_factory->server
 
 
 def api_factory(
@@ -52,5 +52,5 @@ def api_factory(
         lifespan=lifespan,  # можно переопределить на выходе
         callback_start_error=lambda error_data: slots.slot15(name=settings.name, err=error_data),
         callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
-        exception_handlers=ExceptionHandlers(),  # системный обработчик исключений
+        exception_handlers_class=ExceptionHandlers,  # системный обработчик исключений
     )
