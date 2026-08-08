@@ -21,7 +21,7 @@ class EngineTestProcess(EngineTestSuite):
         await engine.start()
 
         request_id = '#000'
-        data = EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.1)
+        data = EngineIOSchemas.process_input_data(text='stub', iterations=5)
         # запуск задачи вычисления результата
         task = asyncio.create_task(engine.process(data=data, request_id=request_id))
         await task
@@ -35,7 +35,7 @@ class EngineTestProcess(EngineTestSuite):
         await engine.start()
 
         request_id = '#000'
-        data = EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.1)
+        data = EngineIOSchemas.process_input_data(text='stub', iterations=5)
         # запуск задачи вычисления результата
         task = asyncio.create_task(engine.process(data=data, request_id=request_id))
         # попытка взять результат раньше готовности

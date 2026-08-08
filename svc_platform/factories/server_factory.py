@@ -29,6 +29,7 @@ def server_factory(
         # функции start/start_err/stop сервер (логирование):
         callback_start=api_modul.callback_start,
         callback_start_error=api_modul.callback_start_error,
+        callback_end=api_modul.callback_end,
         # lifespan (явная остановка компонентов)
         lifespan=api_modul.lifespan,
         middleware_err_enable=middleware_err_enable,

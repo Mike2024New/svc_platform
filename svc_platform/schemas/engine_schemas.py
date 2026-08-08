@@ -16,7 +16,6 @@ class ExecuteInputData(EngineIOBase):
 class ProcessInputData(EngineIOBase):
     text: str = 'stub'
     iterations: int = 20
-    step_time: float = 0.5
 
 
 class ProcessOutputData(EngineIOBase):

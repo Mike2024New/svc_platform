@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.34.0"
+version = "0.35.0"
 description = "Платформа для запуска сервисов (репозитории svc)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -9,6 +9,7 @@ dependencies = [
     "infrastructure-cli-utils",
     "infrastructure-message-bus",
     "infrastructure-path-utils",
+    "infrastructure-http-clients",
     "websockets>=16.1.1",
 ]
 
@@ -22,6 +23,9 @@ build-backend = "setuptools.build_meta"
 include = [
     "svc_platform*",
 ]
+
+[tool.uv.sources]
+infrastructure-http-clients = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_http_clients", rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4" }
 
 [tool.uv.sources.infrastructure-server]
 git = "https://github.com/Mike2024New/infrastructure2.git"

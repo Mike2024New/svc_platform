@@ -1,9 +1,9 @@
+import threading
 import pytest
 from typing import Generator
 from dataclasses import dataclass
 from svc_platform.engine import Engine
-from svc_platform.factories.message_bus_factory import message_bus_factory
-from svc_platform.factories.settings_manager_factory import settings_manager_factory
+from svc_platform.factories import message_bus_factory, settings_manager_factory, server_factory, api_factory
 from svc_platform.schemas import SettingsExample
 from svc_platform.slots import slots_init
 from svc_platform.schemas import EngineIOSchemas
@@ -23,7 +23,7 @@ class EngineTestSuite:
 
     @pytest.fixture
     def process_input_data(self):
-        return EngineIOSchemas.process_input_data(text='stub', iterations=5, step_time=0.5)
+        return EngineIOSchemas.process_input_data(text='stub', iterations=5)
 
     @pytest.fixture
     def process_output_data(self):
@@ -67,3 +67,29 @@ class EngineTestSuite:
             streaming_input_data=streaming_input_data,
         )
         yield engine_class(settings=settings), parameters
+
+    @pytest.fixture
+    def test_api(self, engine_class):
+        _ = self  # IDE узбагойся
+        # получить настройки (на базе schemas.BaseSettings)
+        settings, settings_manager = settings_manager_factory(settings_model=SettingsExample())
+        message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
+        message_bus_settings.set_component_name(component=f"{settings.name}_example")
+        # включить слоты передав в них шину сообщений (если не передать шину fallback на принты)
+        slots_init(callback=message_bus_add, enable=True)
+        # создать экземпляр движка (движок может быть переопределенным в дочерних проектах)
+        engine = engine_class(settings=settings)
+        # подключить api ядра ( маршруты /start/, /stop/, /process/, /execute/ и так далее)
+        api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
+        # создать сервер пробросив в него настройки, api_modul и при необходимости кастомные роутеры
+        server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
+
+        def start_server():
+            server.start(port=8000, log_level='warning', host='localhost')
+
+        threading.Thread(target=start_server).start()
+        from time import sleep
+        sleep(2)
+        yield  # в этой точке выполняются другие тесты
+        # ручная остановка сервера
+        server.stop()

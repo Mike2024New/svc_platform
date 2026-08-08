@@ -20,8 +20,9 @@ class ApiFactoryResult:
     engine: Engine  # экземпляр класса движка
     routers_list: list[APIRouter]  # системный роутер с маршрутами /process/, /execute/, /stream/
     lifespan: Callable
-    callback_start: Callable  # функция которая выполняется после старта движка
-    callback_start_error: Callable  # функция которая выполняется в случае ошибки запуска движка
+    callback_start: Callable | None  # функция которая выполняется после старта движка
+    callback_start_error: Callable | None  # функция которая выполняется в случае ошибки запуска движка
+    callback_end: Callable | None  # функция которая выполняется при ручной остановке сервера (server.stop)
     exception_handlers_class: type(ExceptionHandlers)  # класс, который можно расширить между api_factory->server
     middlewares_list: list[tuple[type(BaseHTTPMiddleware), dict]]
 
@@ -54,6 +55,7 @@ def api_factory(
         lifespan=lifespan,  # можно переопределить на выходе
         callback_start_error=lambda error_data: slots.slot15(name=settings.name, err=error_data),
         callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
+        callback_end=None,
         exception_handlers_class=ExceptionHandlers,  # системный обработчик исключений
         middlewares_list=system_middlewares_factory(engine=engine),  # промежуточные слои для http запросов (до/после)
     )
