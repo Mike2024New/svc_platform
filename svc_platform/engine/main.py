@@ -44,6 +44,11 @@ class ProcessTask:
     completed_at: float | None = None
 
 
+@dataclass
+class ExecuteTask:
+    event: asyncio.Event
+
+
 class Engine(
     Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
         BaseSettingsType,
@@ -54,13 +59,7 @@ class Engine(
         StreamingOutputDataType,
     ]
 ):
-    def __init__(
-            self,
-            settings: BaseSettingsType,
-            process_limit: int = 1,
-            execute_limit: int = 1,
-            process_result_ttl: float = 10,
-    ):
+    def __init__(self, settings: BaseSettingsType, ):
         """
         :param settings: системные настройки приложения (settings.json)
         """
@@ -75,18 +74,19 @@ class Engine(
         self._stop_streaming = asyncio.Event()
 
         # настройка цепочки execute
-        self._execute_registry: dict[str, Any] = {}
-        self._execute_semaphore = asyncio.Semaphore(execute_limit)
+        self._execute_registry: dict[str, ExecuteTask] = {}
+        self._execute_semaphore = asyncio.Semaphore(self._settings.execute_limit)
 
         # настройка цепочки process
         self._process_registry: dict[str, ProcessTask] = {}
-        self._process_semaphore = asyncio.Semaphore(process_limit)
-        self._process_ttl = process_result_ttl
+        self._process_semaphore = asyncio.Semaphore(self._settings.process_limit)
         self._process_cleanup_task: asyncio.Task | None = None
 
     def _on_set_parameters(self):
         """логика записи параметров (например информация об используемом устройстве)"""
-        pass
+        self.parameters['execute_limit'] = self._settings.execute_limit
+        self.parameters['process_limit'] = self._settings.process_limit
+        self.parameters['process_result_ttl'] = self._settings.process_result_ttl
 
     # =============== START =================
 
@@ -152,7 +152,7 @@ class Engine(
             expired_ids = []
             for req_id, data in self._process_registry.items():
                 if data.completed_at is not None:
-                    if (now - data.completed_at) > self._process_ttl:
+                    if (now - data.completed_at) > self._settings.process_result_ttl:
                         expired_ids.append(req_id)
 
             # удаление устаревших задач
@@ -300,10 +300,9 @@ class Engine(
             start_time = perf_counter()
             slots.slot18(name=self._settings.name, request_id=request_id)
             # создание event для управления текущей задачей (процессом)
-            process = asyncio.Event()
-            self._execute_registry[request_id] = {'event': process, 'cancelled': False}
+            self._execute_registry[request_id] = ExecuteTask(event=asyncio.Event())
             try:
-                await self._on_execute(data, process, *args, **kwargs)
+                await self._on_execute(data, event=self._execute_registry[request_id].event, *args, **kwargs)
                 end_time = round(perf_counter() - start_time, 2)
                 slots.slot19(name=self._settings.name, request_id=request_id, end_time=end_time)
             except asyncio.CancelledError:
@@ -314,17 +313,17 @@ class Engine(
             finally:
                 # сообщить о завершении
                 if self._execute_registry.get(request_id) is not None:
-                    self._execute_registry[request_id]['event'].set()
+                    self._execute_registry[request_id].event.set()
                 self._execute_registry.pop(request_id, None)  # удалить задачу
 
-    async def _on_execute(self, data: ExecuteInputDataType, process: asyncio.Event, *args, **kwargs) -> None:
+    async def _on_execute(self, data: ExecuteInputDataType, event: asyncio.Event, *args, **kwargs) -> None:
         """Метод исполнительный, например tts. Следит за состоянием переменной self._stop_execute.is_set()"""
         _ = self, data, args, kwargs
         for i in data.text.split():
             await asyncio.sleep(data.step_time)
 
             # Остановка задачи (в классах наследниках этот же механизм)
-            if process.is_set():
+            if event.is_set():
                 return
 
             print(i)
@@ -333,8 +332,7 @@ class Engine(
         if request_id not in self._execute_registry:
             raise EngineExc.ExecuteNoFindReqestId(f'Не запущен execute для request_id: {request_id}')
 
-        self._execute_registry[request_id]['event'].set()
-        self._execute_registry[request_id]['cancelled'] = True
+        self._execute_registry[request_id].event.set()
         slots.slot21(name=self._settings.name, request_id=request_id)
 
     # =============== STREAM =================
@@ -418,8 +416,8 @@ if __name__ == '__main__':
         request_id = '#000'
         data = EngineIOSchemas.execute_input_data(step_time=0.5)
         task = asyncio.create_task(engine.execute(request_id=request_id, data=data))
-        # await asyncio.sleep(2)
-        # engine.stop_execute(request_id=request_id)
+        await asyncio.sleep(2)
+        engine.stop_execute(request_id=request_id)
         await task
 
 

@@ -1,3 +1,4 @@
+import inspect
 from typing import Any
 from typing import Literal
 from typing import Callable
@@ -28,22 +29,30 @@ def slots_log(
         request_id: str | None = None,
         data: dict | None = None,
         error: Exception | None = None,
+        slot_name: str = '',
         **kwargs
 ):
+    if slot_name:
+        slot_name = f"{slot_name}: "
+        if data is not None:
+            data['slot'] = slot_name
+        else:
+            data = {'slot': slot_name}
+
     if slots_enable:
         _ = kwargs
         if message_bus_add is not None:
             message_bus_add(
                 level=level,
                 subcomponent=subcomponent,
-                message=message,
+                message=f"{slot_name}{message}",
                 event=event,
                 data=data,
                 error=error,
                 request_id=request_id,
             )
         else:
-            print(message)
+            print(f"{slot_name}{message}")
 
 
 def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
@@ -55,6 +64,7 @@ def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
         message=f'{name}.engine.start',
         event=f'engine.start',
         data=parameters,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -67,6 +77,7 @@ def slot2(name: str, parameters: dict[str, Any], *args, **kwargs):
         message=f'{name}.engine.stop',
         event=f'engine.stop',
         data=parameters,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -79,6 +90,7 @@ def slot3(name: str, err: Exception, *args, **kwargs):
         message=f'{name}.engine.start.error -> {err}',
         event=f'engine.start.error',
         error=err,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -91,6 +103,7 @@ def slot4(name: str, err: Exception, *args, **kwargs):
         message=f'{name}.engine.stop.error -> {err}',
         event=f'engine.stop.error',
         error=err,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -103,6 +116,7 @@ def slot5(name: str, err: Exception, *args, **kwargs):
         message=f'{name}.engine.process.error -> {err}',
         event=f'engine.process.error',
         error=err,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -115,6 +129,7 @@ def slot6(name: str, err: Exception, *args, **kwargs):
         message=f'{name}.engine.execute.error -> {err}',
         event=f'engine.execute.error',
         error=err,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -128,6 +143,7 @@ def slot7(name: str, request_id: str, err: Exception, *args, **kwargs):
         event=f'engine.stream.error',
         error=err,
         request_id=request_id,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -141,6 +157,7 @@ def slot8(name: str, request_id: str, *args, **kwargs):
         event=f'engine.stream.start',
         request_id=request_id,
         data={'timedelta_sec': 0},
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -154,6 +171,7 @@ def slot9(name: str, request_id: str, end_time: float, *args, **kwargs):
         event=f'engine.stream.stop',
         request_id=request_id,
         data={'timedelta_sec': end_time},
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -166,6 +184,7 @@ def slot11(name: str, err: Exception, *args, **kwargs):
         message=f'{name}.api.stream.error disconnected, err -> {err}',
         event=f'engine.api.stream.error',
         error=err,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -176,6 +195,7 @@ def slot12(name: str, *args, **kwargs):
         subcomponent=name,
         message=f'{name}.api.warning  server is not started',
         event=f'server is not started',
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -187,6 +207,7 @@ def slot13(name, data, *args, **kwargs):
         message=f'{name}.server.start {data}',
         event=f'server start',
         data=data,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -197,6 +218,7 @@ def slot14(name, *args, **kwargs):
         subcomponent=name,
         message=f'{name}.server.stop',
         event=f'server stop',
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -208,6 +230,7 @@ def slot15(name, err, *args, **kwargs):
         message=f'{name}.server.start.error -> {err}',
         event=f'engine.server.error',
         error=err,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -220,6 +243,7 @@ def slot16(name, request_id: str, *args, **kwargs):
         event=f'engine.start.process',
         request_id=request_id,
         data={'timedelta_sec': 0},
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -232,6 +256,7 @@ def slot17(name, end_time: float, request_id: str, *args, **kwargs):
         event=f'engine.stop.process',
         request_id=request_id,
         data={'timedelta_sec': end_time},
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -244,6 +269,7 @@ def slot18(name, request_id: str, *args, **kwargs):
         event=f'engine.start.execute',
         request_id=request_id,
         data={'timedelta_sec': 0},
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -256,6 +282,7 @@ def slot19(name, end_time: float, request_id: str, *args, **kwargs):
         event=f'engine.stop.execute',
         request_id=request_id,
         data={'timedelta_sec': end_time},
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -267,6 +294,7 @@ def slot20(name, request_id: str, *args, **kwargs):
         message=f'{name}.engine.process.interrupted.cancel',
         event=f'engine.process.interrupted.cancel',
         request_id=request_id,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -278,6 +306,7 @@ def slot21(name, request_id: str, *args, **kwargs):
         message=f'{name}.engine.execute.interrupted',
         event=f'engine.execute.interrupted',
         request_id=request_id,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -289,6 +318,7 @@ def slot22(name, request_id: str, *args, **kwargs):
         message=f'{name}.engine.process.cleanup',
         event=f'engine.engine.process.cleanup',
         request_id=request_id,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
 
 
@@ -300,4 +330,5 @@ def slot23(name, request_id: str, *args, **kwargs):
         message=f'{name}.engine.process задача `{request_id}` была отменена',
         event=f'engine.process.interrupted.cancel',
         request_id=request_id,
+        slot_name=f'core.{inspect.currentframe().f_code.co_name}',
     )
