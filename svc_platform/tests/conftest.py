@@ -1,5 +1,4 @@
-import threading
-import pytest
+import threading, pytest
 from typing import Generator
 from dataclasses import dataclass
 from svc_platform.engine import Engine
@@ -7,6 +6,10 @@ from svc_platform.factories import message_bus_factory, settings_manager_factory
 from svc_platform.schemas import SettingsExample
 from svc_platform.slots import slots_init
 from svc_platform.schemas import EngineIOSchemas
+from svc_platform.api.urls import Urls
+from infrastructure_server import ServerV2
+from infrastructure_process_utils import find_free_port
+from infrastructure_http_clients import ServerProbe
 
 
 @dataclass
@@ -69,7 +72,7 @@ class EngineTestSuite:
         yield engine_class(settings=settings), parameters
 
     @pytest.fixture
-    def test_api(self, engine_class):
+    def test_api(self, engine_class) -> Generator[ServerV2, None, None]:
         _ = self  # IDE узбагойся
         # получить настройки (на базе schemas.BaseSettings)
         settings, settings_manager = settings_manager_factory(settings_model=SettingsExample())
@@ -83,13 +86,21 @@ class EngineTestSuite:
         api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
         # создать сервер пробросив в него настройки, api_modul и при необходимости кастомные роутеры
         server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
+        yield server  # в этой точке выполняются другие тесты
+        # ручная остановка сервера
+
+
+    @pytest.fixture
+    def run_server(self, test_api) -> Generator[Urls, None, None]:
+        _ = self
+        server = test_api
+        port = find_free_port(start_port=8000, max_attempts=100, ignore_ports_list=[])
+        url = Urls(port=port, host='localhost')
 
         def start_server():
-            server.start(port=8000, log_level='warning', host='localhost')
+            server.start(port=port, log_level='warning', host='localhost')
 
         threading.Thread(target=start_server).start()
-        from time import sleep
-        sleep(2)
-        yield  # в этой точке выполняются другие тесты
-        # ручная остановка сервера
-        server.stop()
+        ServerProbe.polling(url=url.health, timeout=10, interval=0.5, expected_status=200)
+        yield url
+        ServerProbe.polling(url=url.shutdown, timeout=10, interval=0.5, expected_status=200)

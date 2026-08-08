@@ -1,7 +1,7 @@
 [project]
 name = "svc_platform"
-version = "0.35.0"
-description = "Платформа для запуска сервисов (репозитории svc)"
+version = "0.36.0"
+description = "Платформа для запуска сервисов, `svc_` стандарт (репозитории Mike2024New которые содержат `svc_`"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,6 +10,7 @@ dependencies = [
     "infrastructure-message-bus",
     "infrastructure-path-utils",
     "infrastructure-http-clients",
+    "infrastructure-process-utils",
     "websockets>=16.1.1",
 ]
 
@@ -25,27 +26,12 @@ include = [
 ]
 
 [tool.uv.sources]
-infrastructure-http-clients = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_http_clients", rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4" }
-
-[tool.uv.sources.infrastructure-server]
-git = "https://github.com/Mike2024New/infrastructure2.git"
-subdirectory = "packages/infrastructure_server"
-rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
-
-[tool.uv.sources.infrastructure-cli-utils]
-git = "https://github.com/Mike2024New/infrastructure2.git"
-subdirectory = "packages/infrastructure_cli_utils"
-rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
-
-[tool.uv.sources.infrastructure-message-bus]
-git = "https://github.com/Mike2024New/infrastructure2.git"
-subdirectory = "packages/infrastructure_message_bus"
-rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
-
-[tool.uv.sources.infrastructure-path-utils]
-git = "https://github.com/Mike2024New/infrastructure2.git"
-subdirectory = "packages/infrastructure_path_utils"
-rev = "0a80e94697ae1390cfabf6c9de448d8f00e285c4"
+infrastructure-server = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_server", rev = "5635f3be2b6c90289ee513fc944fefff57d7bd1b" }
+infrastructure-cli-utils = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_cli_utils", rev = "5635f3be2b6c90289ee513fc944fefff57d7bd1b" }
+infrastructure-message-bus = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_message_bus", rev = "5635f3be2b6c90289ee513fc944fefff57d7bd1b" }
+infrastructure-path-utils = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_path_utils", rev = "5635f3be2b6c90289ee513fc944fefff57d7bd1b" }
+infrastructure-http-clients = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_http_clients", rev = "5635f3be2b6c90289ee513fc944fefff57d7bd1b" }
+infrastructure-process-utils = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_process_utils", rev = "5635f3be2b6c90289ee513fc944fefff57d7bd1b" }
 
 [tool.pytest.ini_options]
 testpaths = [
