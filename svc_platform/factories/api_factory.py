@@ -1,8 +1,9 @@
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import APIRouter
 from svc_platform import slots
 from dataclasses import dataclass
 from typing import Callable
-from svc_platform.api import routres_factory, lifespan_factory
+from svc_platform.api import routres_factory, lifespan_factory, system_middlewares_factory
 from svc_platform.engine import Engine
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.exception_handlers import ExceptionHandlers
@@ -22,6 +23,7 @@ class ApiFactoryResult:
     callback_start: Callable  # функция которая выполняется после старта движка
     callback_start_error: Callable  # функция которая выполняется в случае ошибки запуска движка
     exception_handlers_class: type(ExceptionHandlers)  # класс, который можно расширить между api_factory->server
+    middlewares_list: list[tuple[type(BaseHTTPMiddleware), dict]]
 
 
 def api_factory(
@@ -53,4 +55,5 @@ def api_factory(
         callback_start_error=lambda error_data: slots.slot15(name=settings.name, err=error_data),
         callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
         exception_handlers_class=ExceptionHandlers,  # системный обработчик исключений
+        middlewares_list=system_middlewares_factory(engine=engine),  # промежуточные слои для http запросов (до/после)
     )

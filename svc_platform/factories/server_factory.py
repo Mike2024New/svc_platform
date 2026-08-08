@@ -33,6 +33,6 @@ def server_factory(
         lifespan=api_modul.lifespan,
         middleware_err_enable=middleware_err_enable,
         exception_handlers=api_modul.exception_handlers_class(),  # подключение кастомных обработчиков ошибок
-        # middlewares_list=api_modul.middlewares_list,
+        middlewares_list=api_modul.middlewares_list,
     )
     return server
