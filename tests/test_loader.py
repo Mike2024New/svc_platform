@@ -12,12 +12,12 @@ from svc_platform.engine import Engine
 
 
 class TestTts(
-    # EngineTestRun,
-    # EngineTestProcess,
+    EngineTestRun,
+    EngineTestProcess,
     EngineTestExecute,
-    # EngineTestStreaming,
-    # ApiTestRun,
-    # ApiTestExecute,
+    EngineTestStreaming,
+    ApiTestRun,
+    ApiTestExecute,
 ):
     @pytest.fixture
     def engine_class(self):

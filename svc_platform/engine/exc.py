@@ -28,3 +28,9 @@ class EngineExc:
 
     class ExecuteRequestIdAlreadyExists(RuntimeError):
         pass
+
+    class StreamRequestIdAlreadyExists(RuntimeError):
+        pass
+
+    class StreamNoFindReqestId(RuntimeError):
+        pass

@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from svc_platform import slots
 from dataclasses import dataclass
 from typing import Callable
-from svc_platform.api import routres_factory, lifespan_factory, system_middlewares_factory
+from svc_platform.api import routers_factory, lifespan_factory, system_middlewares_factory
 from svc_platform.engine import Engine
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.exception_handlers import ExceptionHandlers
@@ -40,7 +40,7 @@ def api_factory(
     :return: объект для запуска сервера -> ApiFactoryResult
     """
     try:
-        routers_list = routres_factory(
+        routers_list = routers_factory(
             engine=engine,
             settings=settings,
             engine_io_schemas=standart_api_schemas

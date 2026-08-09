@@ -7,15 +7,23 @@ class BaseSettings(BaseModel):
     name: str = 'unnamed'
     execute_limit: int = Field(
         default=1,
-        description='Максимальное количество execute одновременно (защита от перегрузки).'
+        description='Максимальное количество execute одновременно (защита от перегрузки).',
     )
     process_limit: int = Field(
         default=1,
-        description='Максимальное количество process одновременно (защита от перегрузки).'
+        description='Максимальное количество process одновременно (защита от перегрузки).',
     )
     process_result_ttl: float = Field(
         default=300,
-        description='Время хранения результата после вычисления (в секундах), после задача и результат удалятся (защита от перегрузки).'
+        description='Время хранения результата после вычисления (в секундах), после задача и результат удалятся (защита от перегрузки).',
+    )
+    streaming_limit: int = Field(
+        default=2,
+        description='Максимальное количество стримингов одновременно (защита от перегрузки)',
+    )
+    streaming_all_tasks_timeout: float = Field(
+        default=10.0,
+        description='Время на завершение всех стримов при экстренном прерывании.'
     )
 
 

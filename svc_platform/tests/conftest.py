@@ -18,6 +18,7 @@ class Parameters:
     process_output_data: EngineIOSchemas.process_output_data
     execute_input_data: EngineIOSchemas.execute_input_data
     streaming_input_data: EngineIOSchemas.streaming_input_data
+    streaming_output_data: EngineIOSchemas.streaming_output_data
     request_id: str = '#000'
 
 
@@ -32,6 +33,7 @@ class EngineTestSuite:
             process_output_data=EngineIOSchemas.process_output_data(result='stub'),
             execute_input_data=EngineIOSchemas.execute_input_data(text='stub'),
             streaming_input_data=EngineIOSchemas.streaming_input_data(text='stub'),
+            streaming_output_data=EngineIOSchemas.streaming_output_data(text='stub'),
         )
 
     @pytest.fixture

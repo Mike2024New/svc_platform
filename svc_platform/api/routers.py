@@ -8,7 +8,7 @@ from svc_platform.engine import EngineExc
 from svc_platform.schemas import EngineIOSchemas
 
 
-def routres_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas) -> list[APIRouter]:
+def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas) -> list[APIRouter]:
     app_router = APIRouter(tags=[settings.name])
 
     # =============== DEPENDENCIES ========================

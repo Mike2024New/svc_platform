@@ -8,15 +8,16 @@ class EngineTestStreaming(EngineTestSuite):
         _ = self
         await test_engine.start()
 
-        async def callback(x):
-            _ = x
+        async def callback(chunk: eingine_io_schemas.streaming_output_data):
+            print(chunk)
 
         task = asyncio.create_task(
             test_engine.stream(
                 data=eingine_io_schemas.streaming_input_data,
-                callback=callback
+                callback=callback,
+                request_id=eingine_io_schemas.request_id,
             )
         )
         await asyncio.sleep(2)
-        test_engine.stop_stream()
+        test_engine.stop_stream(request_id=eingine_io_schemas.request_id)
         await task

@@ -49,6 +49,12 @@ class ExecuteTask:
     event: asyncio.Event
 
 
+@dataclass
+class StreamingTask:
+    event: asyncio.Event
+    task: asyncio.Task | None
+
+
 class Engine(
     Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
         BaseSettingsType,
@@ -68,10 +74,12 @@ class Engine(
         self.parameters: dict[str, Any] = {'running': self._running}
         self._on_set_parameters()
         # состояние Engine
-        self._streaming_running = False
         # стоп сигналы
         self._stop_component = asyncio.Event()
-        self._stop_streaming = asyncio.Event()
+
+        # настройка цепочки stream
+        self._streaming_registry: dict[str, StreamingTask] = {}
+        self._streaming_semaphore = asyncio.Semaphore(self._settings.streaming_limit)
 
         # настройка цепочки execute
         self._execute_registry: dict[str, ExecuteTask] = {}
@@ -87,6 +95,8 @@ class Engine(
         self.parameters['execute_limit'] = self._settings.execute_limit
         self.parameters['process_limit'] = self._settings.process_limit
         self.parameters['process_result_ttl'] = self._settings.process_result_ttl
+        self.parameters['streaming_limit'] = self._settings.streaming_limit
+        self.parameters['streaming_all_tasks_timeout'] = self._settings.streaming_all_tasks_timeout
 
     # =============== START =================
 
@@ -123,11 +133,11 @@ class Engine(
         self._running = False
         self.parameters['running'] = False
         try:
-            self.stop_stream()  # остановить стриминг если он продолжается
             await self._on_stop(*args, **kwargs)
             # сбросить все процессы.
             self._process_registry = {}
             self._execute_registry = {}
+            await self.stop_all_stream_tasks()
             # остановка наблюдателя за результатами процессов (который удаляет старые процессы)
             if self._process_cleanup_task is not None:
                 self._process_cleanup_task.cancel()
@@ -213,7 +223,7 @@ class Engine(
                 self._process_registry.pop(request_id, None)  # если задача упала с ошибкой, то убрать её из списка
                 raise
             except Exception as err:  # отлов любых ошибок
-                slots.slot5(name=self._settings.name, err=err)
+                slots.slot5(name=self._settings.name, request_id=request_id, err=err)
                 raise
             finally:
                 # в любом случае испустить сигнал о завершении процесса
@@ -257,7 +267,7 @@ class Engine(
         """
         Получение результата вычисления процесса по request_id, если не готово или отменено, возбуждаются исключения
         :param request_id: id процесса
-        :return:
+        :return: результат вычисления процесса если готов
         """
         if request_id not in self._process_registry:
             raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
@@ -267,6 +277,7 @@ class Engine(
 
         result = self._process_registry[request_id].result
         self._process_registry.pop(request_id)
+        slots.slot26(name=self._settings.name, request_id=request_id)
         return result
 
     # =============== EXECUTE =================
@@ -308,7 +319,7 @@ class Engine(
             except asyncio.CancelledError:
                 raise
             except Exception as err:
-                slots.slot6(name=self._settings.name, err=err)
+                slots.slot6(name=self._settings.name, request_id=request_id, err=err)
                 raise
             finally:
                 # сообщить о завершении
@@ -338,7 +349,12 @@ class Engine(
     # =============== STREAM =================
 
     async def stream(
-            self, callback: Callable[[StreamingOutputDataType], Awaitable[None]], data: StreamingInputDataType, *args,
+            self,
+            callback: Callable[[StreamingOutputDataType],
+            Awaitable[None]],
+            data: StreamingInputDataType,
+            request_id: str = str(uuid.uuid4())[:8],
+            *args,
             **kwargs
     ) -> None:
         """
@@ -350,75 +366,115 @@ class Engine(
             - Real-time STT: аудио → фрагменты текста
             - TTS: текст → аудио фрагменты
         -------------------------------------------------------
+        :param request_id:
         :param callback: Функция для каждого фрагмента результата
         :param data: Входные данные (опционально)
         :return: None
         """
-        start_time = perf_counter()
-        _ = self, data, args, kwargs  # игнорировать variable unused
-        if not self._running or self._streaming_running:
-            return
+        if request_id in self._streaming_registry:
+            raise EngineExc.StreamRequestIdAlreadyExists(f'Задача с `{request_id}` уже выполняется.')
 
-        self._streaming_running = True
-        self._stop_streaming.clear()
-        task = asyncio.create_task(self._on_stream(data, callback, *args, **kwargs))
+        async with self._streaming_semaphore:
 
-        request_id = str(uuid.uuid4())[:8]
-        try:
-            slots.slot8(name=self._settings.name, request_id=request_id)
-            while not self._stop_streaming.is_set():
-                if task.done():
-                    exc = task.exception()
-                    if exc:  # если в стриме происходит неучтенная ошибка, то пробросить её вверх (она критическая)
-                        raise exc
-                    break
-                await asyncio.sleep(0.1)
-            end_time = round(perf_counter() - start_time, 2)
-            slots.slot9(name=self._settings.name, request_id=request_id, end_time=end_time)
-        except Exception as err:
-            slots.slot7(name=self._settings.name, request_id=request_id, err=err)
-            raise
-        finally:
-            if task.done():
-                task.cancel()
-            self._streaming_running = False
-            self._stop_streaming.clear()
+            if not self._running:
+                return
 
-    async def _on_stream(self, data: StreamingInputDataType, callback, *args, **kwargs) -> None:
+            start_time = perf_counter()
+            _ = self, data, args, kwargs  # игнорировать variable unused
+
+            try:
+                self._streaming_registry[request_id] = StreamingTask(event=asyncio.Event(), task=None)
+                # запуск стриминга
+                task = asyncio.create_task(
+                    self._on_stream(
+                        data=data,
+                        callback=callback,
+                        event=self._streaming_registry[request_id].event,
+                        *args, **kwargs
+                    )
+                )
+                self._streaming_registry[request_id].task = task  # собрать задачи для отмены (в stop)
+                slots.slot8(name=self._settings.name, request_id=request_id)
+                await task
+                end_time = round(perf_counter() - start_time, 2)
+                slots.slot9(name=self._settings.name, request_id=request_id, end_time=end_time)
+            except asyncio.CancelledError:
+                end_time = round(perf_counter() - start_time, 2)
+                slots.slot24(name=self._settings.name, request_id=request_id, end_time=end_time)
+            except Exception as err:
+                slots.slot7(name=self._settings.name, request_id=request_id, err=err)
+                raise
+            finally:
+                self._streaming_registry.pop(request_id, None)  # удалить задачу
+
+    async def _on_stream(self, data: StreamingInputDataType, callback, event: asyncio.Event, *args, **kwargs) -> None:
         _ = self, data, args, kwargs  # игнорировать variable unused
         # временная заглушка, имитирующая полезную нагрузку
-        i = 0
-        while True:
-            i += 1
-            await callback(f'stream chunk:{i} #stub')
+        for i in range(data.iterations):
+            if event.is_set():
+                return
+            await callback(f'stream chunk:{i} {data.text}')
             await asyncio.sleep(0.2)
 
-    def stop_stream(self) -> None:
+    def stop_stream(self, request_id: str) -> None:
         """Явная остановка стриминга (например через http)"""
-        self._stop_streaming.set()
+        if request_id not in self._streaming_registry:
+            raise EngineExc.StreamNoFindReqestId(f'Не запущен stream для request_id: {request_id}')
+        self._streaming_registry[request_id].event.set()
+
+    async def stop_all_stream_tasks(self):
+        """Прерывание всех запущенных стриминговых процессов"""
+        # собрать все неотмененные задачи
+        active_tasks = [data.task for data in self._streaming_registry.values() if not data.task.done()]
+
+        for task in active_tasks:
+            task.cancel()
+
+        if active_tasks:
+            try:
+                # ожидание отмены текущих стримов
+                await asyncio.wait_for(
+                    asyncio.gather(
+                        *active_tasks,
+                        return_exceptions=True  # подав исключ (например если гонка и какая то задача отменилась раньше)
+                    ),
+                    timeout=self._settings.streaming_all_tasks_timeout,
+                )
+            except asyncio.TimeoutError:
+                slots.slot25(name=self._settings.name, timeout=self._settings.streaming_all_tasks_timeout)
 
 
 if __name__ == '__main__':
-    # пример расширения класса и применения модели в наследниках
-    class SettingsExtend(BaseSettings):
-        samplerate: int = 16000
-
-
     async def main():
+        from svc_platform.schemas import BaseSettings
         from svc_platform.factories import settings_manager_factory, engine_factory
         from svc_platform.slots import slots_init
         from svc_platform.schemas import EngineIOSchemas
 
         slots_init(callback=None, enable=True)
-        current_settings, _ = settings_manager_factory(settings_model=SettingsExtend())
+        current_settings, _ = settings_manager_factory(reset_json=True, settings_model=BaseSettings(streaming_limit=3))
         engine = engine_factory(engine_class=Engine, settings=current_settings)
+        print(engine.parameters)
         await engine.start()
+
+        async def callback(chunk: EngineIOSchemas.streaming_output_data):
+            print(chunk)
+
         request_id = '#000'
-        data = EngineIOSchemas.execute_input_data(step_time=0.5)
-        task = asyncio.create_task(engine.execute(request_id=request_id, data=data))
-        await asyncio.sleep(2)
-        engine.stop_execute(request_id=request_id)
+        task = asyncio.create_task(
+            engine.stream(
+                callback=callback,
+                data=EngineIOSchemas.streaming_input_data(),
+                request_id=request_id,
+            )
+        )
+        # важно при стопе, нужно отменить в ручную все запущенные стриминги иначе процесс зависнет и не выйдет
+        await asyncio.sleep(1)
+        engine.stop_stream(request_id=request_id)
         await task
+        # engine.stop_stream(request_id=request_id)
+        # await task
+        # print(engine._streaming_registry)
 
 
     asyncio.run(main())

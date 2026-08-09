@@ -24,6 +24,7 @@ class ProcessOutputData(EngineIOBase):
 
 class StreamingInputData(EngineIOBase):
     text: str = 'stub'
+    iterations: int = 10
 
 
 class StreamingOutputData(EngineIOBase):
