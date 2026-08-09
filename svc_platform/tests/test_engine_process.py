@@ -2,7 +2,6 @@ import asyncio
 import pytest
 from svc_platform.engine import EngineExc
 from svc_platform.tests.conftest import EngineTestSuite
-from svc_platform.schemas import EngineIOSchemas
 
 """
 Тесты для проверки цепочки process движка, взаимодействие между методами:

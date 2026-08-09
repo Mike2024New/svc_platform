@@ -39,11 +39,7 @@ class EngineTestSuite:
     @pytest.fixture
     def settings(self):
         """Системные настройки приложения"""
-        settings_model = SettingsExample(
-            execute_limit=3,
-            process_limit=3,
-            process_result_ttl=0.5,  # время хранения результата после вычисления
-        )
+        settings_model = SettingsExample()  # можно переопределять параметры
         settings, settings_manager = settings_manager_factory(settings_model=settings_model)
         return settings, settings_manager
 

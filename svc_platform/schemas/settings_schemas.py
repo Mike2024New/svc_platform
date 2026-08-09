@@ -5,26 +5,18 @@ from typing import TypeVar
 # расширяемая модель настроек
 class BaseSettings(BaseModel):
     name: str = 'unnamed'
-    execute_limit: int = Field(
-        default=1,
-        description='Максимальное количество execute одновременно (защита от перегрузки).',
-    )
-    process_limit: int = Field(
-        default=1,
-        description='Максимальное количество process одновременно (защита от перегрузки).',
-    )
-    process_result_ttl: float = Field(
-        default=300,
-        description='Время хранения результата после вычисления (в секундах), после задача и результат удалятся (защита от перегрузки).',
-    )
-    streaming_limit: int = Field(
-        default=2,
-        description='Максимальное количество стримингов одновременно (защита от перегрузки)',
-    )
-    streaming_all_tasks_timeout: float = Field(
-        default=10.0,
-        description='Время на завершение всех стримов при экстренном прерывании.'
-    )
+    # настройки команд
+    execute_limit: int = Field(default=1, description='Максимальное колличество команд выполняемых одновременно')
+    execute_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение команд если остановка')
+    # настройки процесса
+    process_limit: int = Field(default=1, description='Максимальное колличество процессов выполняемых одновременно')
+    process_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение процессов если остановка')
+    process_cleanup_enable: bool = Field(default=True, description='Включить цикл удаления устаревших результатов')
+    process_cleanup_interval: float = Field(default=1, description='Интервал просмотра устаревания выполненных задач')
+    process_cleanup_result_ttl: float = Field(default=300, description='Время хранения результата (в секундах)')
+    # настройки стриминга
+    stream_limit: int = Field(default=1, description='Максимальное колличество стримингов выполняемых одновременно')
+    stream_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение процессов если остановка')
 
 
 SettingsSchemaType = TypeVar('SettingsSchemaType', bound=BaseSettings)

@@ -15,7 +15,7 @@ from svc_platform.factories.settings_manager_factory import settings_manager_fac
 from svc_platform.schemas import SettingsExample, EngineIOSchemas
 
 # единая точка сборки приложения (созданные объекты можно переопределять как угодно)
-settings, settings_manager = settings_manager_factory(settings_model=SettingsExample())
+settings, settings_manager = settings_manager_factory(settings_model=SettingsExample(), reset_json=True)
 message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())

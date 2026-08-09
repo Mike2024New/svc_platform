@@ -13,8 +13,8 @@ from svc_platform.engine import Engine
 
 class TestTts(
     EngineTestRun,
-    EngineTestProcess,
     EngineTestExecute,
+    EngineTestProcess,
     EngineTestStreaming,
     ApiTestRun,
     ApiTestExecute,

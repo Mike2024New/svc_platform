@@ -312,7 +312,7 @@ def slot19(name, end_time: float, request_id: str, *args, **kwargs):
 
 
 @slots_log_decorator
-def slot20(name, request_id: str, *args, **kwargs):
+def slot20(name, request_id: str, end_time: float, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
         level='warning',
@@ -320,11 +320,12 @@ def slot20(name, request_id: str, *args, **kwargs):
         message=f'[ {name}.PROCESS ] {request_id} отменен (task.cancel)',
         event=f'engine.process.interrupted.cancel',
         request_id=request_id,
+        data={'timedelta_sec': end_time},
     )
 
 
 @slots_log_decorator
-def slot21(name, request_id: str, *args, **kwargs):
+def slot21(name, request_id: str, end_time: float, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
         level='warning',
@@ -332,6 +333,7 @@ def slot21(name, request_id: str, *args, **kwargs):
         message=f'[ {name}.EXECUTE ] {request_id} отменен (task.cancel)',
         event=f'engine.execute.interrupted',
         request_id=request_id,
+        data={'timedelta_sec': end_time},
     )
 
 
@@ -395,4 +397,64 @@ def slot26(name: str, request_id: float, *args, **kwargs):
         subcomponent=name,
         message=f'[ {name}.PROCESS ] {request_id} получен результат.',
         event=f'engine.process.get_result',
+    )
+
+
+@slots_log_decorator
+def slot27(name: str, request_id: str, end_time: float, *args, **kwargs):
+    """execute , принудительная остановка команды"""
+    _ = args, kwargs
+    return Parameters(
+        level='info',
+        subcomponent=name,
+        message=f'[ {name}.EXECUTE ] `{request_id}` отменен (task.cancel)',
+        event=f'engine.execute.canceled',
+        request_id=request_id,
+        data={'timedelta_sec': end_time},
+    )
+
+
+@slots_log_decorator
+def slot28(name: str, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    return Parameters(
+        level='warning',
+        subcomponent=name,
+        message=f'[ {name}.EXECUTE ] {request_id} не запущен, так как не запущен движок. ',
+        event=f'engine.execute.not_started',
+    )
+
+
+@slots_log_decorator
+def slot29(name, request_id: str, end_time: float, *args, **kwargs):
+    _ = args, kwargs
+    return Parameters(
+        level='warning',
+        subcomponent=name,
+        message=f'[ {name}.PROCESS ] {request_id} остановлен',
+        event=f'engine.process.interrupted.stop',
+        request_id=request_id,
+        data={'timedelta_sec': end_time},
+    )
+
+
+@slots_log_decorator
+def slot30(name: str, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    return Parameters(
+        level='warning',
+        subcomponent=name,
+        message=f'[ {name}.PROCESS ] {request_id} не запущен, так как не запущен движок. ',
+        event=f'engine.process.not_started',
+    )
+
+
+@slots_log_decorator
+def slot31(name: str, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    return Parameters(
+        level='warning',
+        subcomponent=name,
+        message=f'[ {name}.STREAM ] {request_id} не запущен, так как не запущен движок. ',
+        event=f'engine.stream.not_started',
     )
