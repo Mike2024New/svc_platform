@@ -48,7 +48,7 @@ class ExceptionHandlers(ExceptionHandlersProtocol):
             )
 
         @app.exception_handler(EngineExc.ProcessResultNotCompleted)
-        async def exc_handler2(request: Request, exc: Exception):
+        async def exc_handler3(request: Request, exc: Exception):
             """Процесс ещё не завершен"""
             return JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,
@@ -60,7 +60,7 @@ class ExceptionHandlers(ExceptionHandlersProtocol):
             )
 
         @app.exception_handler(EngineExc.ExecuteNoFindReqestId)
-        async def exc_handler2(request: Request, exc: Exception):
+        async def exc_handler4(request: Request, exc: Exception):
             """Попытка остановить несуществующий execute"""
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -72,7 +72,7 @@ class ExceptionHandlers(ExceptionHandlersProtocol):
             )
 
         @app.exception_handler(EngineExc.StartError)
-        async def exc_handler3(request: Request, exc: Exception):
+        async def exc_handler5(request: Request, exc: Exception):
             """Ошибка при запуске движка"""
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -84,10 +84,22 @@ class ExceptionHandlers(ExceptionHandlersProtocol):
             )
 
         @app.exception_handler(EngineExc.StopError)
-        async def exc_handler3(request: Request, exc: Exception):
+        async def exc_handler6(request: Request, exc: Exception):
             """Ошибка при остановке движка"""
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    'error': exc.__class__.__name__,
+                    'detail': str(exc),
+                    'path': request.url.path
+                }
+            )
+
+        @app.exception_handler(EngineExc.ProcessStorageLimit)
+        async def exc_handler7(request: Request, exc: Exception):
+            """Ошибка при остановке движка"""
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
                     'error': exc.__class__.__name__,
                     'detail': str(exc),

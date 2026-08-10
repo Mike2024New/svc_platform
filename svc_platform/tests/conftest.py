@@ -3,7 +3,7 @@ from typing import Generator
 from dataclasses import dataclass
 from svc_platform.engine import Engine
 from svc_platform.factories import message_bus_factory, settings_manager_factory, server_factory, api_factory
-from svc_platform.schemas import SettingsExample
+from svc_platform.schemas import SettingsExtend
 from svc_platform.slots import slots_init
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.urls import Urls
@@ -39,7 +39,7 @@ class EngineTestSuite:
     @pytest.fixture
     def settings(self):
         """Системные настройки приложения"""
-        settings_model = SettingsExample()  # можно переопределять параметры
+        settings_model = SettingsExtend()  # можно переопределять параметры
         settings, settings_manager = settings_manager_factory(settings_model=settings_model)
         return settings, settings_manager
 

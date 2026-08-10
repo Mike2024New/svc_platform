@@ -15,6 +15,10 @@ class ProcessMixin(Generic[ProcessInputDataType]):
         self._process_tasks_registry: dict[str, ProcessTask] = {}
         self._process_semaphore = asyncio.Semaphore(self._settings.process_limit)
 
+    @property
+    def process_result_storage_size(self):
+        return len(self._process_tasks_registry.keys())
+
     async def process(self, data: ProcessInputDataType, request_id: str, *args, **kwargs) -> None:
         """
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
@@ -170,7 +174,7 @@ class ProcessMixin(Generic[ProcessInputDataType]):
             await asyncio.sleep(self._settings.process_cleanup_interval)
 
             # если экземпляр уничтожен (дополнительная гарантия выхода, чтобы цикл не завис в памяти)
-            if not hasattr(self, '_tasks_registry'):
+            if not hasattr(self, '_process_tasks_registry'):
                 break
 
             # если registry пуст
@@ -180,7 +184,6 @@ class ProcessMixin(Generic[ProcessInputDataType]):
             now = perf_counter()
             expired_ids = []
             for req_id, data in self._process_tasks_registry.items():
-                print(req_id)
                 if data.completed_at is not None:
                     if (now - data.completed_at) > self._settings.process_cleanup_result_ttl:
                         expired_ids.append(req_id)
@@ -194,13 +197,13 @@ class ProcessMixin(Generic[ProcessInputDataType]):
 # пример использования
 async def main():
     from svc_platform.schemas import BaseSettings
+    from svc_platform.slots import slots_init
+    slots_init(callback=None, enable=False)
     request_id = '#001'
-    pr = ProcessMixin(settings=BaseSettings(process_limit=2, process_cleanup_result_ttl=1))
-    await asyncio.sleep(0.1)
+    pr = ProcessMixin(settings=BaseSettings(process_limit=6, process_cleanup_result_ttl=1, process_cleanup_interval=1))
     task = asyncio.create_task(pr.process(request_id=request_id, data=EngineIOSchemas.process_input_data()))
     await task
     print(pr.get_process_result(request_id=request_id))
-    await asyncio.sleep(4)
 
 
 if __name__ == '__main__':

@@ -59,6 +59,14 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
     async def process(data: engine_io_schemas.process_input_data, _is_running: bool = Depends(is_component_running)):
         """Запуск процесса вычисления входных данных. Результат можно посмотреть на /process_result/ по готовности"""
         request_id = str(uuid.uuid4())[:8]
+        if engine.process_result_storage_size >= settings.process_limit_max_result:
+            slots.slot32(name=settings.name, request_id=request_id)
+            raise EngineExc.ProcessStorageLimit(
+                f'Сервер перегружен. '
+                f'Активных задач: {engine.process_result_storage_size}. '
+                f'Лимит: {settings.process_limit_max_result}'
+            )
+
         asyncio.create_task(engine.process(data, request_id=request_id))
         return {'message': f'Процесс {request_id} запущен', 'request_id': request_id}
 
@@ -106,9 +114,10 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
     async def streaming(websocket: WebSocket):
         await websocket.accept()
         closed_by_client = False
+        request_id = str(uuid.uuid4())[:8]
 
         try:
-            # оповещение клиента
+            # если engine не включен, то отправить клиенту отказ
             if not engine.parameters['running']:
                 await websocket.send_json({'type': 'close', 'msg': 'Connection closed, server not started.'})
                 return
@@ -121,12 +130,12 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 nonlocal closed_by_client
                 try:
                     if not closed_by_client:
-                        await websocket.send_json({'type': 'data', 'chunk': chunk_in})
+                        await websocket.send_json({'type': 'data', 'chunk': chunk_in, 'request_id': request_id})
                 except WebSocketDisconnect:
                     closed_by_client = True
-                    engine.stop_stream()
+                    engine.stop_stream(request_id=request_id)
 
-            await engine.stream(callback=async_callback, data=data)
+            await engine.stream(callback=async_callback, data=data, request_id=request_id)
             # сообщить клиенту что соединение закрыто
             if not closed_by_client:
                 await websocket.send_json({'type': 'close', 'msg': 'Connection closed.'})
@@ -137,7 +146,7 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                     await websocket.send_json({'type': 'err', 'detail': f'server error, connection close'})
                 except Exception:  # noqa
                     pass
-                engine.stop_stream()
+                engine.stop_stream(request_id=request_id)
             slots.slot11(name=settings.name, err=err)
 
     return [app_router]

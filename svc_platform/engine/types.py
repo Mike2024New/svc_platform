@@ -1,6 +1,7 @@
 import asyncio
+from datetime import datetime
 from typing import TypeVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from svc_platform.schemas import EngineIOSchemas, BaseSettings
 
 
@@ -23,6 +24,7 @@ class StreamTask(Task): ...
 class ProcessTask(Task):
     result: EngineIOSchemas.process_output_data | None = None
     completed_at: float | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now())
 
 
 # =============== ДЖЕНЕРИКИ ТИПОВ ===============

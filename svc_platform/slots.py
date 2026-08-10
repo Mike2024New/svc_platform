@@ -53,14 +53,14 @@ def slots_log_decorator(func):
             else:
                 parameters.data = {'slot': slot_name}
 
-            message = f"{parameters.message}\t@{slot_name}"
+            message = f"{parameters.message} ( {slot_name} )"
             if slots_enable:
                 _ = kwargs
                 if message_bus_add is not None:
                     message_bus_add(
                         level=parameters.level,
                         subcomponent=parameters.subcomponent,
-                        message=parameters.message,
+                        message=message,
                         event=parameters.event,
                         request_id=parameters.request_id,
                         data=parameters.data,
@@ -457,4 +457,15 @@ def slot31(name: str, request_id: str, *args, **kwargs):
         subcomponent=name,
         message=f'[ {name}.STREAM ] {request_id} не запущен, так как не запущен движок. ',
         event=f'engine.stream.not_started',
+    )
+
+
+@slots_log_decorator
+def slot32(name: str, request_id: str, *args, **kwargs):
+    _ = args, kwargs
+    return Parameters(
+        level='warning',
+        subcomponent=name,
+        message=f'[ {name}.PROCESS ] {request_id} не запущен, переполнен process storage. ',
+        event=f'engine.process.storage_overflow',
     )

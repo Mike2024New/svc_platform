@@ -10,6 +10,7 @@ class BaseSettings(BaseModel):
     execute_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение команд если остановка')
     # настройки процесса
     process_limit: int = Field(default=1, description='Максимальное колличество процессов выполняемых одновременно')
+    process_limit_max_result: int = Field(default=3, description='Не брать в работу процессы выше этого лимита')
     process_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение процессов если остановка')
     process_cleanup_enable: bool = Field(default=True, description='Включить цикл удаления устаревших результатов')
     process_cleanup_interval: float = Field(default=1, description='Интервал просмотра устаревания выполненных задач')
@@ -23,5 +24,8 @@ SettingsSchemaType = TypeVar('SettingsSchemaType', bound=BaseSettings)
 
 
 # расширенная схема (для примера)
-class SettingsExample(BaseSettings):
-    samplerate: int = 16000
+class SettingsExtend(BaseSettings):
+    pass
+
+
+st = SettingsExtend()

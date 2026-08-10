@@ -20,6 +20,8 @@ class EngineExc:
     class ProcessRequestIdAlreadyExists(RuntimeError):
         pass
 
+    class ProcessStorageLimit(RuntimeError):
+        pass
 
     class ExecuteNoFindReqestId(RuntimeError):
         pass
