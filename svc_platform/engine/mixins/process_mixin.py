@@ -6,10 +6,10 @@ from svc_platform.engine.exc import EngineExc
 from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import ProcessTask
-from svc_platform.engine.types import ProcessInputDataType, ProcessOutputDataType
+from svc_platform.schemas import engine_types as e_types
 
 
-class ProcessMixin(Generic[ProcessInputDataType]):
+class ProcessMixin(Generic[e_types.ProcessInputDataType]):
     def __init__(self, settings: SettingsSchemaType):
         self._settings = settings
         self._process_tasks_registry: dict[str, ProcessTask] = {}
@@ -19,7 +19,7 @@ class ProcessMixin(Generic[ProcessInputDataType]):
     def process_result_storage_size(self):
         return len(self._process_tasks_registry.keys())
 
-    async def process(self, data: ProcessInputDataType, request_id: str, *args, **kwargs) -> None:
+    async def process(self, data: e_types.ProcessInputDataType, request_id: str, *args, **kwargs) -> None:
         """
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
         Блокирующая обработка (batch режим).
@@ -77,8 +77,8 @@ class ProcessMixin(Generic[ProcessInputDataType]):
                     self._process_tasks_registry[request_id].event.set()
 
     async def _on_process(
-            self, data: ProcessInputDataType, event: asyncio.Event, request_id: str, *args, **kwargs
-    ) -> ProcessOutputDataType | None:
+            self, data: e_types.ProcessInputDataType, event: asyncio.Event, request_id: str, *args, **kwargs
+    ) -> e_types.ProcessOutputDataType | None:
         """
         (Заглушка! В наследниках полностью переопределить метод, (без super) )
         Реализация логики process
@@ -131,7 +131,7 @@ class ProcessMixin(Generic[ProcessInputDataType]):
         if not task.done():
             task.cancel()
 
-    def get_process_result(self, request_id) -> ProcessOutputDataType:
+    def get_process_result(self, request_id) -> e_types.ProcessOutputDataType:
         """
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
         Получение результата вычисления процесса по request_id, если не готово или отменено, возбуждаются исключения

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Awaitable, Callable, Generic
+from typing import Any, Awaitable, Callable
 from svc_platform import slots
 from svc_platform.engine.exc import EngineExc
 # Миксины
@@ -7,28 +7,13 @@ from svc_platform.engine.mixins import ExecuteMixin
 from svc_platform.engine.mixins import ProcessMixin
 from svc_platform.engine.mixins import StreamMixin
 # Типы
-from svc_platform.engine.types import BaseSettingsType
-from svc_platform.engine.types import ExecuteInputDataType
-from svc_platform.engine.types import ProcessInputDataType, ProcessOutputDataType
-from svc_platform.engine.types import StreamInputDataType, StreamOutputDataType
+from svc_platform.schemas import engine_types as e_types
 
 __all__ = ['Engine']
 
 
-class Engine(
-    ExecuteMixin,
-    ProcessMixin,
-    StreamMixin,
-    Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
-        BaseSettingsType,
-        ExecuteInputDataType,
-        ProcessInputDataType,
-        ProcessOutputDataType,
-        StreamInputDataType,
-        StreamOutputDataType,
-    ]
-):
-    def __init__(self, settings: BaseSettingsType, ):
+class Engine(ExecuteMixin,ProcessMixin,StreamMixin):
+    def __init__(self, settings: e_types.BaseSettingsType, ):
         """
         :param settings: системные настройки приложения (settings.json)
         """
@@ -99,7 +84,7 @@ class Engine(
 
     # =============== PROCESS =================
 
-    async def process(self, data: ProcessInputDataType, request_id: str, *args, **kwargs) -> None:
+    async def process(self, data: e_types.ProcessInputDataType, request_id: str, *args, **kwargs) -> None:
         if not self._running:  # разрешить метод если запущен движок
             slots.slot30(name=self._settings.name, request_id=request_id)
             return None
@@ -107,7 +92,7 @@ class Engine(
 
     # ============== EXECUTE =================
 
-    async def execute(self, data: ExecuteInputDataType, request_id: str, *args, **kwargs) -> None:
+    async def execute(self, data: e_types.ExecuteInputDataType, request_id: str, *args, **kwargs) -> None:
         if not self._running:  # разрешить метод если запущен движок
             slots.slot28(name=self._settings.name, request_id=request_id)
             return None
@@ -116,7 +101,7 @@ class Engine(
     # =============== STREAM =================
 
     async def stream(
-            self, callback: Callable[[StreamOutputDataType], Awaitable[None]], data: StreamInputDataType,
+            self, callback: Callable[[e_types.StreamOutputDataType], Awaitable[None]], data: e_types.StreamInputDataType,
             request_id: str, *args, **kwargs
     ) -> None:
         if not self._running:  # разрешить метод если запущен движок

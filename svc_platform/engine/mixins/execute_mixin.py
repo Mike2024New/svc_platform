@@ -6,16 +6,16 @@ from svc_platform.engine.exc import EngineExc
 from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import ExecuteTask
-from svc_platform.engine.types import ExecuteInputDataType
+from svc_platform.schemas import engine_types as e_types
 
 
-class ExecuteMixin(Generic[ExecuteInputDataType]):
+class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
     def __init__(self, settings: SettingsSchemaType):
         self._settings = settings
         self._execute_tasks_registry: dict[str, ExecuteTask] = {}
         self._execute_semaphore = asyncio.Semaphore(self._settings.execute_limit)
 
-    async def execute(self, data: ExecuteInputDataType, request_id: str, *args, **kwargs) -> None:
+    async def execute(self, data: e_types.ExecuteInputDataType, request_id: str, *args, **kwargs) -> None:
         """
         (логику метода определять в _on_execute)
         Исполнительный метод (action режим).
@@ -73,7 +73,7 @@ class ExecuteMixin(Generic[ExecuteInputDataType]):
                 self._execute_tasks_registry.pop(request_id, None)
 
     async def _on_execute(
-            self, data: ExecuteInputDataType, event: asyncio.Event, request_id: str, *args,
+            self, data: e_types.ExecuteInputDataType, event: asyncio.Event, request_id: str, *args,
             **kwargs) -> bool:
         """
         (Заглушка! В наследниках полностью переопределить метод, (без super) )

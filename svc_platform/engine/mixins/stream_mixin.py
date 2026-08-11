@@ -6,17 +6,18 @@ from svc_platform.engine.exc import EngineExc
 from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import StreamTask
-from svc_platform.engine.types import StreamInputDataType, StreamOutputDataType
+from svc_platform.schemas import engine_types as e_types
 
 
-class StreamMixin(Generic[StreamInputDataType]):
+class StreamMixin(Generic[e_types.StreamInputDataType]):
     def __init__(self, settings: SettingsSchemaType):
         self._settings = settings
         self._stream_tasks_registry: dict[str, StreamTask] = {}
         self._stream_semaphore = asyncio.Semaphore(self._settings.stream_limit)
 
     async def stream(
-            self, callback: Callable[[StreamOutputDataType], Awaitable[None]], data: StreamInputDataType,
+            self, callback: Callable[[e_types.StreamOutputDataType], Awaitable[None]],
+            data: e_types.StreamInputDataType,
             request_id: str, *args, **kwargs
     ) -> None:
         _ = self, args, kwargs  # игнорировать variable unused
@@ -56,7 +57,7 @@ class StreamMixin(Generic[StreamInputDataType]):
                 self._stream_tasks_registry.pop(request_id, None)
 
     async def _on_stream(
-            self, data: StreamInputDataType, callback, event: asyncio.Event, request_id: str, *args, **kwargs
+            self, data: e_types.StreamInputDataType, callback, event: asyncio.Event, request_id: str, *args, **kwargs
     ) -> None:
         """
         (Заглушка! В наследниках полностью переопределить метод, (без super) )
