@@ -2,7 +2,7 @@ import threading
 from svc_platform.factories import engine_factory, api_factory, server_factory
 from svc_platform.factories.message_bus_factory import message_bus_factory
 from svc_platform.factories.settings_manager_factory import settings_manager_factory
-from svc_platform.schemas import SettingsExtend
+from svc_platform.schemas import Settings
 from svc_platform.slots import slots_init
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.engine import Engine
@@ -14,7 +14,7 @@ def example1():
     Подъём и остановка сервера с сборкой настроек. Без cli.py, просто как отдельный скрипт (например для тестирования)
     """
     # получить настройки (на базе schemas.BaseSettings)
-    settings, settings_manager = settings_manager_factory(settings_model=SettingsExtend())
+    settings, settings_manager = settings_manager_factory(settings_model=Settings())
     message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
     # опционально: изменить название компонента, например example
     message_bus_settings.set_component_name(component=f"{settings.name}_example")

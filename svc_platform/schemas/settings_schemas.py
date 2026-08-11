@@ -24,8 +24,5 @@ SettingsSchemaType = TypeVar('SettingsSchemaType', bound=BaseSettings)
 
 
 # расширенная схема (для примера)
-class SettingsExtend(BaseSettings):
+class Settings(BaseSettings):
     pass
-
-
-st = SettingsExtend()

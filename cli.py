@@ -12,10 +12,10 @@ from svc_platform.slots import slots_init
 """
 from svc_platform.factories.message_bus_factory import message_bus_factory
 from svc_platform.factories.settings_manager_factory import settings_manager_factory
-from svc_platform.schemas import SettingsExtend, EngineIOSchemas
+from svc_platform.schemas import Settings, EngineIOSchemas
 
 # единая точка сборки приложения (созданные объекты можно переопределять как угодно)
-settings, settings_manager = settings_manager_factory(settings_model=SettingsExtend(), reset_json=True)
+settings, settings_manager = settings_manager_factory(settings_model=Settings(), reset_json=True)
 message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())

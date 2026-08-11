@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Generic
 from svc_platform import slots
 from svc_platform.engine.exc import EngineExc
 # Миксины
@@ -9,14 +9,26 @@ from svc_platform.engine.mixins import StreamMixin
 # Типы
 from svc_platform.engine.types import BaseSettingsType
 from svc_platform.engine.types import ExecuteInputDataType
-from svc_platform.engine.types import ProcessInputDataType
+from svc_platform.engine.types import ProcessInputDataType, ProcessOutputDataType
 from svc_platform.engine.types import StreamInputDataType, StreamOutputDataType
 
 __all__ = ['Engine']
 
 
-class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
-    def __init__(self, settings: BaseSettingsType):
+class Engine(
+    ExecuteMixin,
+    ProcessMixin,
+    StreamMixin,
+    Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
+        BaseSettingsType,
+        ExecuteInputDataType,
+        ProcessInputDataType,
+        ProcessOutputDataType,
+        StreamInputDataType,
+        StreamOutputDataType,
+    ]
+):
+    def __init__(self, settings: BaseSettingsType, ):
         """
         :param settings: системные настройки приложения (settings.json)
         """
