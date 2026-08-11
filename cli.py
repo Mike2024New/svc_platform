@@ -3,7 +3,8 @@ from infrastructure_path_utils import get_root_dir_path
 from infrastructure_builder import BuildParameters
 from svc_platform.factories import cli_factory, server_factory, api_factory, engine_factory, log_viewer_factory
 from svc_platform.engine import Engine
-from svc_platform.slots import slots_init
+from svc_platform.slots_manager import slots_init
+from svc_platform.slots_manager.handlers import handler_message_bus_log_factory
 
 """
 Пример сборки cli приложения
@@ -21,7 +22,12 @@ engine = engine_factory(engine_class=Engine, settings=settings)
 api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
 server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
 log_viewer = log_viewer_factory()
-slots_init(callback=message_bus_add)
+slots_init(
+    enable=True,
+    handlers_list=[handler_message_bus_log_factory(message_bus_add)],
+    # show_only_slots=[13, 14],
+    # show_only_slots_inverse=True,
+)
 
 # настройки отображения cli.py команд
 cli_settings = CliSettings(

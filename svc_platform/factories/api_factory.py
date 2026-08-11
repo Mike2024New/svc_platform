@@ -1,6 +1,6 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import APIRouter
-from svc_platform import slots
+from svc_platform.slots_manager import slots
 from dataclasses import dataclass
 from typing import Callable
 from svc_platform.api import routers_factory, lifespan_factory, system_middlewares_factory

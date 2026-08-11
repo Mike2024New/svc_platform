@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, status, Depends, HTTPException, WebSocket
 from starlette.websockets import WebSocketDisconnect
 from svc_platform.engine import Engine
-from svc_platform import slots
+from svc_platform.slots_manager import slots
 from svc_platform.engine import EngineExc
 from svc_platform.schemas import EngineIOSchemas
 

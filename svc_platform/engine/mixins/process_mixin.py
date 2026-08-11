@@ -1,7 +1,7 @@
 import asyncio
 from time import perf_counter
 from typing import Generic
-from svc_platform import slots
+from svc_platform.slots_manager import slots
 from svc_platform.engine.exc import EngineExc
 from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks

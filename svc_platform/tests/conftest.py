@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from svc_platform.engine import Engine
 from svc_platform.factories import message_bus_factory, settings_manager_factory, server_factory, api_factory
 from svc_platform.schemas import Settings
-from svc_platform.slots import slots_init
+from svc_platform.slots_manager import slots_init, handler_message_bus_log_factory
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.urls import Urls
 from infrastructure_process_utils import find_free_port
@@ -51,7 +51,11 @@ class EngineTestSuite:
         engine = engine_factory(engine_class=Engine, settings=settings)
         message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
         message_bus_settings.set_component_name(component=f"{settings.name}_test")
-        slots_init(callback=message_bus_add, enable=True)
+        # подключение слотов
+        slots_init(
+            handlers_list=[handler_message_bus_log_factory(message_bus_add)],
+            enable=True,
+        )
         yield engine
 
     @pytest.fixture

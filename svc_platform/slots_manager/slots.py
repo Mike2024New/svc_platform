@@ -1,84 +1,8 @@
+from svc_platform.slots_manager.core.main import slots_decorator, Parameters
 from typing import Any
-from typing import Literal
-from typing import Callable
-from dataclasses import dataclass
-from functools import wraps
-from warnings import warn
-
-"""
-Единая точка логирования и мониторинга жизненного цикла всех SVC-сервисов. 
-
-- К переменной message_bus_add подшивается программа обработки логов через slots_init.
-- Если slots_init не был выполнен — выводятся print'ы в консоль (fallback).
-- Можно заменить/дополнить на Kafka, logging, OpenTelemetry и т.д.
-- Можно использовать не только для логирования но и для дополнительных хуков
-
-К слотам можно навешивать декораторы с расширенной функциональностью.
-"""
-
-message_bus_add: Callable | None = None
-slots_enable: bool = True
 
 
-def slots_init(callback: Callable | None = None, enable: bool = True):
-    global message_bus_add, slots_enable
-    slots_enable = enable
-    message_bus_add = callback
-
-
-@dataclass
-class Parameters:
-    level: Literal['debug', 'info', 'warning', 'error', 'critical', 'start', 'stop', 'process']
-    subcomponent: str
-    message: str
-    event: str
-    request_id: str | None = None
-    data: dict | None = None
-    error: Exception | None = None
-
-
-def slots_log_decorator(core: bool = False):
-    def decorator(func):
-        """
-        Проброс событий в шину сообщений. С автоматическим определением вызывающего слота (имя функции например slot1)
-        Защита от неисправностей в самих слотах, чтобы приложение не вылетало из-за ошибок в слотах
-        """
-
-        @wraps(func)
-        def inner(*args, **kwargs):
-            slot_name = f'{"core." if core else ""}{func.__name__}'
-            try:
-                parameters: Parameters = func(*args, **kwargs)
-                if parameters.data is not None:
-                    parameters.data['slot'] = slot_name
-                else:
-                    parameters.data = {'slot': slot_name}
-
-                message = f"{parameters.message} ( {slot_name} )"
-                if slots_enable:
-                    _ = kwargs
-                    if message_bus_add is not None:
-                        message_bus_add(
-                            level=parameters.level,
-                            subcomponent=parameters.subcomponent,
-                            message=message,
-                            event=parameters.event,
-                            request_id=parameters.request_id,
-                            data=parameters.data,
-                            error=parameters.error,
-                        )
-                    else:
-                        print(message)
-            except Exception as err:
-                print(err)
-                warn(message=f'Не удалось обработать slots.{slot_name}, причина: {err}')
-
-        return inner
-
-    return decorator
-
-
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
     """Запуск движка (engine.started)"""
     _ = args, kwargs, parameters
@@ -91,7 +15,7 @@ def slot1(name: str, parameters: dict[str, Any], *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot2(name: str, parameters: dict[str, Any], *args, **kwargs):
     """Остановка движка (engine.started)"""
     _ = args, kwargs, parameters
@@ -104,7 +28,7 @@ def slot2(name: str, parameters: dict[str, Any], *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot3(name: str, err: Exception, *args, **kwargs):
     """Ошибка запуска движка"""
     _ = args, kwargs
@@ -117,7 +41,7 @@ def slot3(name: str, err: Exception, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot4(name: str, err: Exception, *args, **kwargs):
     """Ошибка остановки движка"""
     _ = args, kwargs
@@ -130,7 +54,7 @@ def slot4(name: str, err: Exception, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot5(name: str, request_id: str, err: Exception, *args, **kwargs):
     """Ошибка процесса движка"""
     _ = args, kwargs
@@ -144,7 +68,7 @@ def slot5(name: str, request_id: str, err: Exception, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot6(name: str, request_id: str, err: Exception, *args, **kwargs):
     """Ошибка execute метода движка"""
     _ = args, kwargs
@@ -157,7 +81,7 @@ def slot6(name: str, request_id: str, err: Exception, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot7(name: str, request_id: str, err: Exception, *args, **kwargs):
     """Ошибка stream метода движка"""
     _ = args, kwargs
@@ -171,7 +95,7 @@ def slot7(name: str, request_id: str, err: Exception, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot8(name: str, request_id: str, *args, **kwargs):
     """stream start, начало стриминга"""
     _ = args, kwargs
@@ -185,7 +109,7 @@ def slot8(name: str, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot9(name: str, request_id: str, end_time: float, *args, **kwargs):
     """stream stop, остановка движка"""
     _ = args, kwargs
@@ -199,7 +123,7 @@ def slot9(name: str, request_id: str, end_time: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot11(name: str, request_id: str, err: Exception, *args, **kwargs):
     """api.stream - ошибка соединение будет разорвано"""
     _ = args, kwargs
@@ -212,7 +136,7 @@ def slot11(name: str, request_id: str, err: Exception, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot12(name: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -223,7 +147,7 @@ def slot12(name: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot13(name, data, *args, **kwargs):
     _ = args, kwargs
     message = (
@@ -239,7 +163,7 @@ def slot13(name, data, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot14(name, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -250,7 +174,7 @@ def slot14(name, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot15(name, err, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -262,7 +186,7 @@ def slot15(name, err, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot16(name, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -275,7 +199,7 @@ def slot16(name, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot17(name, end_time: float, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -288,7 +212,7 @@ def slot17(name, end_time: float, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot18(name, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -301,7 +225,7 @@ def slot18(name, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot19(name, end_time: float, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -314,7 +238,7 @@ def slot19(name, end_time: float, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot20(name, request_id: str, end_time: float, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -327,7 +251,7 @@ def slot20(name, request_id: str, end_time: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot21(name, request_id: str, end_time: float, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -340,7 +264,7 @@ def slot21(name, request_id: str, end_time: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot22(name, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -352,7 +276,7 @@ def slot22(name, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot23(name, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -364,7 +288,7 @@ def slot23(name, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot24(name: str, request_id: str, end_time: float, *args, **kwargs):
     """stream stop, остановка движка"""
     _ = args, kwargs
@@ -378,7 +302,7 @@ def slot24(name: str, request_id: str, end_time: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot25(name: str, timeout: float, *args, **kwargs):
     """stream stop, остановка движка"""
     _ = args, kwargs
@@ -391,7 +315,7 @@ def slot25(name: str, timeout: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot26(name: str, request_id: float, *args, **kwargs):
     """Результат процесса получен"""
     _ = args, kwargs
@@ -403,7 +327,7 @@ def slot26(name: str, request_id: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot27(name: str, request_id: str, end_time: float, *args, **kwargs):
     """execute , принудительная остановка команды"""
     _ = args, kwargs
@@ -417,7 +341,7 @@ def slot27(name: str, request_id: str, end_time: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot28(name: str, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -428,7 +352,7 @@ def slot28(name: str, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot29(name, request_id: str, end_time: float, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -441,7 +365,7 @@ def slot29(name, request_id: str, end_time: float, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot30(name: str, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -452,7 +376,7 @@ def slot30(name: str, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot31(name: str, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(
@@ -463,7 +387,7 @@ def slot31(name: str, request_id: str, *args, **kwargs):
     )
 
 
-@slots_log_decorator(core=True)
+@slots_decorator(core=True)
 def slot32(name: str, request_id: str, *args, **kwargs):
     _ = args, kwargs
     return Parameters(

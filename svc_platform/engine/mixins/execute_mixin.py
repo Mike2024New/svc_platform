@@ -1,12 +1,12 @@
 import asyncio
 from time import perf_counter
 from typing import Generic
-from svc_platform import slots
 from svc_platform.engine.exc import EngineExc
 from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import ExecuteTask
 from svc_platform.schemas import engine_types as e_types
+from svc_platform.slots_manager import slots
 
 
 class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
@@ -135,9 +135,17 @@ class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
 # пример использования
 async def main():
     from svc_platform.schemas import BaseSettings
+    from svc_platform.slots_manager import slots_init
+    from svc_platform.slots_manager.handlers import handler_message_bus_log_factory
+    from svc_platform.factories import settings_manager_factory, message_bus_factory
+
     request_id = '#001'
     request_id2 = '#002'
-    ex = ExecuteMixin(settings=BaseSettings(execute_limit=2))
+    settings, settings_manager = settings_manager_factory(settings_model=BaseSettings(), reset_json=True)
+    ex = ExecuteMixin(settings=settings)
+    message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
+
+    slots_init(enable=True, handlers_list=[handler_message_bus_log_factory(message_bus_add)])
     task = asyncio.create_task(ex.execute(request_id=request_id, data=EngineIOSchemas.execute_input_data()))
     task2 = asyncio.create_task(ex.execute(request_id=request_id2, data=EngineIOSchemas.execute_input_data()))
     await asyncio.sleep(0.2)

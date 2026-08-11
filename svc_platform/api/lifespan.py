@@ -2,7 +2,7 @@ from svc_platform.engine import Engine
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from typing import Callable
-from svc_platform import slots
+from svc_platform.slots_manager import slots
 from svc_platform.schemas import BaseSettings
 from typing import TypeVar
 

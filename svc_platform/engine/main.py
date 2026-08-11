@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, Awaitable, Callable
-from svc_platform import slots
+from svc_platform.slots_manager import slots
 from svc_platform.engine.exc import EngineExc
 # Миксины
 from svc_platform.engine.mixins import ExecuteMixin
@@ -12,7 +12,7 @@ from svc_platform.schemas import engine_types as e_types
 __all__ = ['Engine']
 
 
-class Engine(ExecuteMixin,ProcessMixin,StreamMixin):
+class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
     def __init__(self, settings: e_types.BaseSettingsType, ):
         """
         :param settings: системные настройки приложения (settings.json)
@@ -101,7 +101,8 @@ class Engine(ExecuteMixin,ProcessMixin,StreamMixin):
     # =============== STREAM =================
 
     async def stream(
-            self, callback: Callable[[e_types.StreamOutputDataType], Awaitable[None]], data: e_types.StreamInputDataType,
+            self, callback: Callable[[e_types.StreamOutputDataType], Awaitable[None]],
+            data: e_types.StreamInputDataType,
             request_id: str, *args, **kwargs
     ) -> None:
         if not self._running:  # разрешить метод если запущен движок
@@ -113,10 +114,10 @@ if __name__ == '__main__':
     async def main():
         from svc_platform.schemas import BaseSettings
         from svc_platform.factories import settings_manager_factory, engine_factory
-        from svc_platform.slots import slots_init
+        from svc_platform.slots_manager import slots_init
         from svc_platform.schemas import EngineIOSchemas
 
-        slots_init(callback=None, enable=True)
+        slots_init(handlers_list=[lambda x: print(x)], enable=True)
         # текущие настройки
         current_settings, _ = settings_manager_factory(
             reset_json=True,  # перезаписать json
