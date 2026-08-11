@@ -21,6 +21,7 @@ class Engine(
     StreamMixin,
     Generic[  # привязка дженериков, это важно чтобы в дочерних проектах IDE видел определенные в них схемы
         BaseSettingsType,
+        ExecuteInputDataType,
         ProcessInputDataType,
         ProcessOutputDataType,
         StreamInputDataType,
