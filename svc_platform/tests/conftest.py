@@ -2,7 +2,7 @@ import threading, pytest
 from typing import Generator
 from dataclasses import dataclass
 from svc_platform.engine import Engine
-from svc_platform.factories import message_bus_factory, settings_manager_factory, server_factory, api_factory
+from svc_platform.factories import message_bus_factory, server_factory, api_factory
 from svc_platform.schemas import Settings
 from svc_platform.slots_manager import slots_init, handler_message_bus_log_factory
 from svc_platform.schemas import EngineIOSchemas
@@ -39,22 +39,24 @@ class EngineTestSuite:
     @pytest.fixture
     def settings(self):
         """Системные настройки приложения"""
-        settings_model = Settings()  # можно переопределять параметры
-        settings, settings_manager = settings_manager_factory(settings_model=settings_model)
-        return settings, settings_manager
+        settings_model = Settings(
+            execute_limit=3,
+            process_limit=3,
+            stream_limit=3,
+        )
+        return settings_model
 
     @pytest.fixture
     def test_engine(self, settings) -> Generator[Engine, None, None]:
         """Фикстура для Engine тестов."""
         _ = self
-        settings, settings_manager = settings
         engine = engine_factory(engine_class=Engine, settings=settings)
+        # если нужно логирование:
         message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
         message_bus_settings.set_component_name(component=f"{settings.name}_test")
-        # подключение слотов
         slots_init(
             handlers_list=[handler_message_bus_log_factory(message_bus_add)],
-            enable=True,
+            enable=False,
         )
         yield engine
 
@@ -63,7 +65,6 @@ class EngineTestSuite:
         """Фикстура для тестов сервера, расширяет Engine."""
         _ = self
         engine = test_engine
-        settings, settings_manager = settings
         api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
         server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
         port = find_free_port(start_port=8000, max_attempts=100, ignore_ports_list=[])  # поиск свободного порта

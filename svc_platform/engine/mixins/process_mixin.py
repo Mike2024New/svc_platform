@@ -197,8 +197,8 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
 # пример использования
 async def main():
     from svc_platform.schemas import BaseSettings
-    from svc_platform.slots import slots_init
-    slots_init(callback=None, enable=False)
+    from svc_platform.slots_manager import slots_init
+    slots_init(handlers_list=None, enable=False)
     request_id = '#001'
     pr = ProcessMixin(settings=BaseSettings(process_limit=6, process_cleanup_result_ttl=1, process_cleanup_interval=1))
     task = asyncio.create_task(pr.process(request_id=request_id, data=EngineIOSchemas.process_input_data()))

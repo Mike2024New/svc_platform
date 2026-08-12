@@ -63,8 +63,8 @@ def slots_init(
     :return: None
     """
     global _enable, _handlers_list, _init, _show_only_slots, _show_only_slots_inverse
+    _init = True
     if enable:
-        _init = True
         _enable = enable
         _handlers_list = handlers_list or []
         _show_only_slots = show_only_slots or []
@@ -84,7 +84,7 @@ def slots_decorator(core: bool = False):
         @wraps(func)
         def inner(*args, **kwargs):
             if not _init:
-                warn('не инициализирован slots_manager, обработчик событий не подключен.')
+                return
             slot_name = f'{"core." if core else "svc."}{func.__name__}'
 
             # фильтрация слотов (если список _show_only_slots не пустой)

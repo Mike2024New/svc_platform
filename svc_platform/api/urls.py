@@ -20,3 +20,5 @@ class Urls:
         # Execute
         self.execute = self._base_url + '/execute/'
         self.execute_stop = self._base_url + '/execute_stop/'
+        # Streaming
+        self.streaming_ws = f'ws://{host}:{port}/ws'

@@ -110,6 +110,17 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
 
     # =============== STREAMING (/WS) ========================
 
+    from pydantic import BaseModel
+    from typing import Literal, Any
+
+    class StreamResponse(BaseModel):
+        type: Literal['error', 'result', 'end']
+        close: bool = False
+        message: str
+        request_id: str
+        error: str | None = None
+        chunk: Any | None = None
+
     @app_router.websocket('/ws')
     async def streaming(websocket: WebSocket):
         await websocket.accept()
@@ -119,34 +130,81 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         try:
             # если engine не включен, то отправить клиенту отказ
             if not engine.parameters['running']:
-                await websocket.send_json({'type': 'close', 'msg': 'Connection closed, server not started.'})
+                await websocket.send_json(
+                    StreamResponse(
+                        type='error',
+                        error='engine not started',
+                        close=True,
+                        message='Не включен engine',
+                        request_id=request_id
+                    ).model_dump()
+                )
                 return
 
             # получение входных данных от клиента (с валидацией)
-            data = engine_io_schemas.streaming_input_data(**await websocket.receive_json())
+            try:
+                data = engine_io_schemas.streaming_input_data(**await websocket.receive_json())
+            except ValueError:
+                await websocket.send_json(
+                    StreamResponse(
+                        type='error',
+                        close=True,
+                        error='no corrected input data',
+                        message='Не верные входные данные.',
+                        request_id=request_id,
+                    ).model_dump()
+                )
+                return
 
             async def async_callback(chunk_in: engine_io_schemas.streaming_output_data):
                 """обработка чанков (отправка клиенту)"""
                 nonlocal closed_by_client
                 try:
                     if not closed_by_client:
-                        await websocket.send_json({'type': 'data', 'chunk': chunk_in, 'request_id': request_id})
+                        await websocket.send_json(
+                            StreamResponse(
+                                type='result',
+                                chunk=chunk_in,
+                                message='стриминг продолжается',
+                                request_id=request_id,
+                            ).model_dump()
+                        )
                 except WebSocketDisconnect:
                     closed_by_client = True
-                    engine.stop_stream(request_id=request_id)
+                    if stream_started:  # закрыть стриминг если он был открыт
+                        engine.stop_stream(request_id=request_id)
 
+            stream_started = True
             await engine.stream(callback=async_callback, data=data, request_id=request_id)
             # сообщить клиенту что соединение закрыто
             if not closed_by_client:
-                await websocket.send_json({'type': 'close', 'msg': 'Connection closed.'})
+                await websocket.send_json(
+                    StreamResponse(
+                        type='end',
+                        close=True,
+                        message='Стриминг завершен',
+                        request_id=request_id,
+                    ).model_dump()
+                )
 
         except Exception as err:
             if not closed_by_client:
                 try:
-                    await websocket.send_json({'type': 'err', 'detail': f'server error, connection close'})
+                    await websocket.send_json(
+                        StreamResponse(
+                            type='error',
+                            error=str(err),
+                            close=True,
+                            message='Внутренняя ошибка сервера',
+                            request_id=request_id,
+                        ).model_dump()
+                    )
                 except Exception:  # noqa
                     pass
-                engine.stop_stream(request_id=request_id)
-            slots.slot11(name=settings.name, err=err)
+                try:
+                    engine.stop_stream(request_id=request_id)
+                except EngineExc.StreamNoFindReqestId:
+                    pass
+            slots.slot11(name=settings.name, err=err, request_id=request_id)
 
     return [app_router]
