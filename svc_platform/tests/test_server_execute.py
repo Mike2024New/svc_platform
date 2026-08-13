@@ -37,7 +37,7 @@ class ApiTestExecute(EngineTestSuite):
         res = requests.get(url.execute_stop, params={'request_id': request_id})
         assert res.status_code == 200, '/execute/ задача не была отменена'
 
-    async def test_execute_aiohttp_base(self, test_server, eingine_io_schemas, test_engine):
+    async def test_execute_aiohttp_base(self, test_server, eingine_io_schemas, test_engine_factory):
         """Базовый асинхронный тест с несколькими запросами, проверка что request_id не дублируются в engine"""
         _ = self
         url = test_server

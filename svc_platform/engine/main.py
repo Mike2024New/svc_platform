@@ -49,6 +49,10 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
             if self._settings.process_cleanup_enable:
                 asyncio.create_task(self._cleanup_old_processes_loop())
             slots.slot1(self._settings.name, parameters=self.parameters)
+            # 3. Сброс stop переменных (для stop_all_tasks) - задачи снова можно брать в работу
+            self._execute_stop_all = False
+            self._process_stop_all = False
+            self._stream_stop_all = False
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
             raise EngineExc.StartError(err)

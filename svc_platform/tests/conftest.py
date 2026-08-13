@@ -1,4 +1,4 @@
-import threading, pytest
+import threading, pytest, asyncio
 from typing import Generator
 from dataclasses import dataclass
 from svc_platform.engine import Engine
@@ -40,31 +40,38 @@ class EngineTestSuite:
     def settings(self):
         """Системные настройки приложения"""
         settings_model = Settings(
-            execute_limit=3,
-            process_limit=3,
-            stream_limit=3,
+            execute_limit=1,
+            process_limit=1,
+            stream_limit=1,
         )
         return settings_model
 
     @pytest.fixture
-    def test_engine(self, settings) -> Generator[Engine, None, None]:
-        """Фикстура для Engine тестов."""
-        _ = self
-        engine = engine_factory(engine_class=Engine, settings=settings)
-        # если нужно логирование:
-        message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
-        message_bus_settings.set_component_name(component=f"{settings.name}_test")
-        slots_init(
-            handlers_list=[handler_message_bus_log_factory(message_bus_add)],
-            enable=False,
-        )
-        yield engine
+    def test_engine_factory(self, settings):
+        """Фабрика для создания Engine с кастомными настройками"""
+
+        def _create_engine(settings_override=None):
+            custom_settings = settings_override or settings
+            engine = engine_factory(
+                engine_class=Engine,
+                settings=settings_override or settings
+            )
+            # если нужно логирование:
+            message_bus_add, message_bus_settings = message_bus_factory(settings=custom_settings)
+            message_bus_settings.set_component_name(component=f"{custom_settings.name}_test")
+            slots_init(
+                handlers_list=[handler_message_bus_log_factory(message_bus_add)],
+                enable=False,
+            )
+            return engine
+
+        return _create_engine
 
     @pytest.fixture
-    def test_server(self, test_engine, settings) -> Generator[Urls, None, None]:
+    def test_server(self, test_engine_factory, settings) -> Generator[Urls, None, None]:
         """Фикстура для тестов сервера, расширяет Engine."""
         _ = self
-        engine = test_engine
+        engine = test_engine_factory()
         api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
         server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
         port = find_free_port(start_port=8000, max_attempts=100, ignore_ports_list=[])  # поиск свободного порта
@@ -77,3 +84,24 @@ class EngineTestSuite:
         ServerProbe.polling(url=url.health, timeout=10, interval=0.5, expected_status=200)
         yield url  # url подвязанный на выбранный порт
         ServerProbe.polling(url=url.shutdown, timeout=10, interval=0.5, expected_status=200)
+
+    @staticmethod
+    async def wait_for_task_state(
+            request_id, registry, target_state: bool = True, timeout: float = 30.0, step: float = 0.1,
+    ):
+        """
+        Ожидание, что задача в реестре достигнет целевого состояния (появится или исчезнет) за отведенное время.
+        (для тестов на машинах с разной производительностью)
+
+        :param request_id: ID задачи
+        :param registry: Словарь задач с ключами request_id (например, engine._execute_tasks_registry)
+        :param target_state: True — ожидание появления задачи, False — ожидание исчезновения задачи
+        :param timeout: Максимальное время ожидания (сек)
+        :param step: Шаг проверки (сек)
+        """
+        attempts = int(timeout / step)
+        for _ in range(attempts):
+            await asyncio.sleep(step)
+            if (request_id in registry) == target_state:
+                return True
+        return False

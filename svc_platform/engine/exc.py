@@ -1,39 +1,39 @@
 class EngineExc:
+    # ============ START ====================
     class StartError(RuntimeError):
         pass
+
+    # ============ STOP ====================
 
     class StopError(RuntimeError):
         pass
 
-    class ProcessResultNotCompleted(RuntimeError):
-        pass
-
-    class ProcessResultNoFindReqestId(RuntimeError):
-        pass
-
-    class ProcessCancelled(RuntimeError):
-        pass
-
-    class ProcessLimit(RuntimeError):
-        pass
-
-    class ProcessRequestIdAlreadyExists(RuntimeError):
-        pass
-
-    class ProcessStorageLimit(RuntimeError):
-        pass
+    # ============ EXECUTE ====================
 
     class ExecuteNoFindReqestId(RuntimeError):
-        pass
-
-    class ExecuteLimit(RuntimeError):
         pass
 
     class ExecuteRequestIdAlreadyExists(RuntimeError):
         pass
 
-    class StreamRequestIdAlreadyExists(RuntimeError):
+    # ============ PROCESS ====================
+
+    class ProcessNoFindReqestId(RuntimeError):
         pass
 
+    class ProcessRequestIdAlreadyExists(RuntimeError):
+        pass
+
+    class ProcessResultNotCompleted(RuntimeError):
+        pass
+
+    class ProcessStorageLimit(RuntimeError):
+        pass
+
+    # ============ STREAM ====================
+
     class StreamNoFindReqestId(RuntimeError):
+        pass
+
+    class StreamRequestIdAlreadyExists(RuntimeError):
         pass

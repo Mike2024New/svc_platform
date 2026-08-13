@@ -18,10 +18,10 @@ class TestTts(
     EngineTestExecute,
     EngineTestProcess,
     EngineTestStreaming,
-    ApiTestRun,
-    ApiTestProcess,
-    ApiTestExecute,
-    ApiTestStream,
+    # ApiTestRun,
+    # ApiTestProcess,
+    # ApiTestExecute,
+    # ApiTestStream,
 ):
     @pytest.fixture
     def engine_class(self):

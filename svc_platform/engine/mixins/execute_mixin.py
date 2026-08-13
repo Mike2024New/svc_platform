@@ -14,6 +14,7 @@ class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
         self._settings = settings
         self._execute_tasks_registry: dict[str, ExecuteTask] = {}
         self._execute_semaphore = asyncio.Semaphore(self._settings.execute_limit)
+        self._execute_stop_all = False  # во внешнем движке нужно установить эту переменную в false в методе start
 
     async def execute(self, data: e_types.ExecuteInputDataType, request_id: str, *args, **kwargs) -> None:
         """
@@ -33,7 +34,12 @@ class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
         (логику метода определять в _on_execute)
         """
         _ = self, args, kwargs  # игнорировать variable unused
+
         async with self._execute_semaphore:  # защита от конфликта корутин (превышения лимита)
+
+            if self._execute_stop_all:
+                return
+
             if request_id in self._execute_tasks_registry:
                 raise EngineExc.ExecuteRequestIdAlreadyExists(f'Задача с `{request_id}` уже выполняется.')
 
@@ -126,6 +132,7 @@ class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
             task.cancel()
 
     async def execute_stop_all_tasks(self):
+        self._execute_stop_all = True
         await stop_all_async_tasks(
             tasks_registry=self._execute_tasks_registry,
             timeout=self._settings.execute_cancel_all_timeout,
@@ -136,16 +143,15 @@ class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
 async def main():
     from svc_platform.schemas import BaseSettings
     from svc_platform.slots_manager import slots_init
-    from svc_platform.slots_manager.handlers import handler_message_bus_log_factory
-    from svc_platform.factories import settings_manager_factory, message_bus_factory
+    from svc_platform.slots_manager.handlers import handler_print_message_factory
+    from svc_platform.factories import settings_manager_factory
 
     request_id = '#001'
     request_id2 = '#002'
-    settings, settings_manager = settings_manager_factory(settings_model=BaseSettings(), reset_json=True)
+    settings, settings_manager = settings_manager_factory(settings_model=BaseSettings(execute_limit=1), reset_json=True)
     ex = ExecuteMixin(settings=settings)
-    message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 
-    slots_init(enable=True, handlers_list=[handler_message_bus_log_factory(message_bus_add)])
+    slots_init(enable=True, handlers_list=[handler_print_message_factory()])
     task = asyncio.create_task(ex.execute(request_id=request_id, data=EngineIOSchemas.execute_input_data()))
     task2 = asyncio.create_task(ex.execute(request_id=request_id2, data=EngineIOSchemas.execute_input_data()))
     await asyncio.sleep(0.2)
@@ -153,6 +159,7 @@ async def main():
     # ex.stop_execute(request_id=request_id)
     await task
     await task2
+    print(task.done())
 
 
 if __name__ == '__main__':

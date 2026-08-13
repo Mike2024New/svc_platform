@@ -14,6 +14,7 @@ class StreamMixin(Generic[e_types.StreamInputDataType]):
         self._settings = settings
         self._stream_tasks_registry: dict[str, StreamTask] = {}
         self._stream_semaphore = asyncio.Semaphore(self._settings.stream_limit)
+        self._stream_stop_all = False  # во внешнем движке нужно установить эту переменную в false в методе start
 
     async def stream(
             self, callback: Callable[[e_types.StreamOutputDataType], Awaitable[None]],
@@ -23,6 +24,10 @@ class StreamMixin(Generic[e_types.StreamInputDataType]):
         _ = self, args, kwargs  # игнорировать variable unused
 
         async with self._stream_semaphore:  # защита от конфликта корутин (превышения лимита)
+
+            if self._stream_stop_all:
+                return
+
             if request_id in self._stream_tasks_registry:
                 raise EngineExc.StreamRequestIdAlreadyExists(f'Стриминг `{request_id}` уже запущен.')
             start_time = perf_counter()
@@ -118,6 +123,7 @@ class StreamMixin(Generic[e_types.StreamInputDataType]):
         :return:None
         (Не переопределять этот метод, бизнес логику реализовывать в _on_stream)
         """
+        self._stream_stop_all = True
         await stop_all_async_tasks(
             tasks_registry=self._stream_tasks_registry,
             timeout=self._settings.stream_cancel_all_timeout,

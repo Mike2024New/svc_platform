@@ -4,7 +4,7 @@ from infrastructure_http_clients import ServerProbe
 
 
 class ApiTestProcess(EngineTestSuite):
-    def test_execute(self, test_server, eingine_io_schemas):
+    def test_process(self, test_server, eingine_io_schemas):
         """Проверка цепочки process, отправка запроса, получение ответа, проверка корректности ответа"""
         _ = self
         url = test_server

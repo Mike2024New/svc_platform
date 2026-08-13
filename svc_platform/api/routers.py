@@ -75,7 +75,7 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         try:
             engine.stop_process(request_id=request_id)
             return {'message': f'Процесс {request_id} остановлен'}
-        except EngineExc.ProcessResultNoFindReqestId:
+        except EngineExc.ProcessNoFindReqestId:
             raise
 
     @app_router.get('/process_result/', status_code=status.HTTP_200_OK)
@@ -85,9 +85,8 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
             result = engine.get_process_result(request_id=request_id)
             return {'message': f'Результат для {request_id}', 'result': result}
         except (
-                EngineExc.ProcessCancelled,  # процесс был отменен
                 EngineExc.ProcessResultNotCompleted,  # процесс не завершен (вычисления ещё не готовы)
-                EngineExc.ProcessResultNoFindReqestId,  # неизвестный request_id, нет такой задачи
+                EngineExc.ProcessNoFindReqestId,  # неизвестный request_id, нет такой задачи
         ):
             raise
 

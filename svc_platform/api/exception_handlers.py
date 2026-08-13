@@ -23,21 +23,9 @@ class ExceptionHandlers(ExceptionHandlersProtocol):
                 content={'error': error, 'detail': str(exc), 'path': request.url.path}
             )
 
-        @app.exception_handler(EngineExc.ProcessResultNoFindReqestId)
+        @app.exception_handler(EngineExc.ProcessNoFindReqestId)
         async def exc_handler1(request: Request, exc: Exception):
             """Не найден заданный request_id"""
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    'error': exc.__class__.__name__,
-                    'detail': str(exc),
-                    'path': request.url.path
-                }
-            )
-
-        @app.exception_handler(EngineExc.ProcessCancelled)
-        async def exc_handler2(request: Request, exc: Exception):
-            """Процесс был отменен"""
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={

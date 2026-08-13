@@ -14,6 +14,7 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
         self._settings = settings
         self._process_tasks_registry: dict[str, ProcessTask] = {}
         self._process_semaphore = asyncio.Semaphore(self._settings.process_limit)
+        self._process_stop_all = False  # во внешнем движке нужно установить эту переменную в false в методе start
 
     @property
     def process_result_storage_size(self):
@@ -36,7 +37,12 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
         """
         _ = self, args, kwargs  # игнорировать variable unused
+
         async with self._process_semaphore:  # защита от конфликта корутин (превышения лимита)
+
+            if self._process_stop_all:
+                return
+
             if request_id in self._process_tasks_registry:
                 raise EngineExc.ProcessRequestIdAlreadyExists(f'Задача с `{request_id}` уже выполняется.')
 
@@ -86,6 +92,7 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
         ⚠ Требования к реализации:
             ✔ Метод должен завершаться при сигнале event ( проверка is_set() )
             ✔ Метод должен возвращать результат (полезная нагрузка) если не было сигнала event
+            ✔ Результат должен быть экземпляром схемы ProcessOutputData
             ✔ Метод должен возвращать None если event сигнал произошел ( выход по is_set() )
             ✔ Переопределяется в наследниках без super (чтобы убрать заглушку)
         ------------------------------------------------------------------------------
@@ -121,7 +128,7 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
         """
         if request_id not in self._process_tasks_registry:
-            raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен process для request_id: {request_id}')
+            raise EngineExc.ProcessNoFindReqestId(f'Не запущен process для request_id: {request_id}')
 
         # мягкая остановка задачи через испускание сигнала
         self._process_tasks_registry[request_id].event.set()
@@ -140,7 +147,7 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
         """
         if request_id not in self._process_tasks_registry:
-            raise EngineExc.ProcessResultNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
+            raise EngineExc.ProcessNoFindReqestId(f'Не запущен процесс для request_id: {request_id}')
 
         if self._process_tasks_registry[request_id].result is None:
             raise EngineExc.ProcessResultNotCompleted('результат ещё не готов')
@@ -157,6 +164,7 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
         :return:None
         (Не переопределять этот метод, бизнес логику реализовывать в _on_process)
         """
+        self._process_stop_all = True
         await stop_all_async_tasks(
             tasks_registry=self._process_tasks_registry,
             timeout=self._settings.process_cancel_all_timeout,
@@ -200,7 +208,7 @@ async def main():
     from svc_platform.slots_manager import slots_init
     slots_init(handlers_list=None, enable=False)
     request_id = '#001'
-    pr = ProcessMixin(settings=BaseSettings(process_limit=6, process_cleanup_result_ttl=1, process_cleanup_interval=1))
+    pr = ProcessMixin(settings=BaseSettings(process_limit=1, process_cleanup_result_ttl=1, process_cleanup_interval=1))
     task = asyncio.create_task(pr.process(request_id=request_id, data=EngineIOSchemas.process_input_data()))
     await task
     print(pr.get_process_result(request_id=request_id))
