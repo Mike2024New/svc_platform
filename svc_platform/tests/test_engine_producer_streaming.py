@@ -13,7 +13,7 @@ class TaskParameters:
     stream_queue_list: list[Queue] = field(default_factory=list)
 
 
-class EngineTestStreaming(EngineTestSuite):
+class EngineTestProducerStreaming(EngineTestSuite):
     @staticmethod
     async def _wait_for_stream_first_chunk(stream_queue, timeout: float = 30.0, step: float = 0.1) -> bool:
         """
@@ -73,7 +73,7 @@ class EngineTestStreaming(EngineTestSuite):
 
         return stream_parameters
 
-    async def test_stream(self, test_engine_factory, engine_io_schemas):
+    async def test_producer_stream(self, test_engine_factory, engine_io_schemas):
         """Проверка, что producer_stream запускается, что тип корректен, что возвращает чанки и удаляется из реестра
         после остановки."""
         _ = self
@@ -108,7 +108,7 @@ class EngineTestStreaming(EngineTestSuite):
             request_id=request_id, registry=engine._producer_stream_tasks_registry, target_state=False,
         ), 'реестр задач не был очищен'
 
-    async def test_stream_double_request_id(self, test_engine_factory, engine_io_schemas, settings):
+    async def test_producer_stream_double_request_id(self, test_engine_factory, engine_io_schemas, settings):
         """
         Проверка, что запуск двух producer_stream в одном захвате семафора с одинаковым request_id вызывает исключение
         StreamRequestIdAlreadyExists
@@ -128,7 +128,7 @@ class EngineTestStreaming(EngineTestSuite):
         with pytest.raises(EngineExc.StreamRequestIdAlreadyExists):
             await asyncio.gather(*stream_parameters.tasks_list)
 
-    async def test_stream_stop(self, test_engine_factory, engine_io_schemas):
+    async def test_producer_stream_stop(self, test_engine_factory, engine_io_schemas):
         """Проверка, что producer_stream останавливается по request_id и удаляется из реестра."""
         _ = self
         engine = test_engine_factory()
@@ -154,7 +154,7 @@ class EngineTestStreaming(EngineTestSuite):
             request_id=request_id, registry=engine._producer_stream_tasks_registry, target_state=False,
         ), 'реестр не был очищен'
 
-    async def test_stream_stop_no_request_id(self, test_engine_factory, engine_io_schemas):
+    async def test_producer_stream_stop_no_request_id(self, test_engine_factory, engine_io_schemas):
         """Проверка, что остановка producer_stream по несуществующему request_id вызывает исключение
         StreamNoFindReqestId и не влияет на активные стримы."""
         _ = self
@@ -178,7 +178,7 @@ class EngineTestStreaming(EngineTestSuite):
             engine.stop_producer_stream(request_id='#_no_correct_request_id_#')  # левый request_id
         assert request_id in engine._producer_stream_tasks_registry, 'стрим был прерван по неверному request_id'
 
-    async def test_stream_limit(self, test_engine_factory, engine_io_schemas, settings):
+    async def test_producer_stream_limit(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что producer_stream не запускает больше задач, чем установлено в stream_limit."""
         _ = self
         tasks_count = 2  # всего 2 задачи
@@ -226,7 +226,7 @@ class EngineTestStreaming(EngineTestSuite):
             stream_queue=second_task_queue,
         ) is True, 'стрим не возвращает чанки'
 
-    async def test_stream_stop_all_tasks(self, test_engine_factory, engine_io_schemas, settings):
+    async def test_producer_stream_stop_all_tasks(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что остановка движка останавливает все producer_stream и устанавливает флаг остановки."""
         _ = self
         settings.stream_limit = 3
