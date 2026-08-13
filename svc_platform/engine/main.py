@@ -5,14 +5,14 @@ from svc_platform.engine.exc import EngineExc
 # Миксины
 from svc_platform.engine.mixins import ExecuteMixin
 from svc_platform.engine.mixins import ProcessMixin
-from svc_platform.engine.mixins import StreamMixin
+from svc_platform.engine.mixins import ProducerStreamMixin
 # Типы
 from svc_platform.schemas import engine_types as e_types
 
 __all__ = ['Engine']
 
 
-class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
+class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
     def __init__(self, settings: e_types.BaseSettingsType, ):
         """
         :param settings: системные настройки приложения (settings.json)
@@ -26,7 +26,7 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
         # подключение модулей:
         ExecuteMixin.__init__(self, settings=settings)
         ProcessMixin.__init__(self, settings=settings)
-        StreamMixin.__init__(self, settings=settings)
+        ProducerStreamMixin.__init__(self, settings=settings)
 
     def _on_set_parameters(self):
         """логика записи параметров (например информация об используемом устройстве)"""
@@ -52,7 +52,7 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
             # 3. Сброс stop переменных (для stop_all_tasks) - задачи снова можно брать в работу
             self._execute_stop_all = False
             self._process_stop_all = False
-            self._stream_stop_all = False
+            self._producer_stream_stop_all = False
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
             raise EngineExc.StartError(err)
@@ -75,7 +75,7 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
             # сбросить все tasks подключенных миксинов.
             await self._process_stop_all_tasks()  # остановить все процессы
             await self.execute_stop_all_tasks()  # остановить все команды
-            await self._stream_stop_all_tasks()  # остановить все стриминговые задачи
+            await self._producer_stream_stop_all_tasks()  # остановить все стриминговые задачи
 
             slots.slot2(self._settings.name, parameters=self.parameters)
         except Exception as err:
@@ -104,52 +104,42 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
 
     # =============== STREAM =================
 
-    async def stream(
-            self, callback: Callable[[e_types.StreamOutputDataType], Awaitable[None]],
-            data: e_types.StreamInputDataType,
+    async def producer_stream(
+            self, callback: Callable[[e_types.ProducerStreamOutputDataType], Awaitable[None]],
+            data: e_types.ProducerStreamInputDataType,
             request_id: str, *args, **kwargs
     ) -> None:
         if not self._running:  # разрешить метод если запущен движок
             slots.slot31(name=self._settings.name, request_id=request_id)
-        return await super().stream(callback=callback, data=data, request_id=request_id, *args, **kwargs)
+        return await super().producer_stream(callback=callback, data=data, request_id=request_id, *args, **kwargs)
 
 
 if __name__ == '__main__':
     async def main():
         from svc_platform.schemas import BaseSettings
         from svc_platform.factories import settings_manager_factory, engine_factory
-        from svc_platform.slots_manager import slots_init
+        from svc_platform.slots_manager import slots_init, handler_print_message_factory
         from svc_platform.schemas import EngineIOSchemas
 
-        slots_init(handlers_list=[lambda x: print(x)], enable=True)
+        slots_init(handlers_list=[handler_print_message_factory()], enable=True)
         # текущие настройки
         current_settings, _ = settings_manager_factory(
             reset_json=True,  # перезаписать json
-            settings_model=BaseSettings(
-                process_limit=2,
-                process_cleanup_result_ttl=1
-            )
+            settings_model=BaseSettings()
         )
         engine = engine_factory(engine_class=Engine, settings=current_settings)
-        print(engine.parameters)
-        request_id = '#001'
-
         await engine.start()
+        tasks = []
+        for i in range(2):
+            task = asyncio.create_task(engine.process(request_id=f'#00{i}', data=EngineIOSchemas.process_input_data()))
+            tasks.append(task)
 
-        async def callback(x):
-            print(x)
+        await asyncio.sleep(1)
+        engine.stop_process(request_id='#000')
+        await asyncio.sleep(0.2)
+        # print(engine._process_tasks_registry)
 
-        task = asyncio.create_task(
-            engine.stream(
-                callback=callback,
-                data=EngineIOSchemas.streaming_input_data(),
-                request_id=request_id,
-            )
-        )
-        # await asyncio.sleep(0.5)
-        # await engine.stop()
-        await task
-        await asyncio.sleep(6)
+        await asyncio.gather(*tasks)
 
 
     asyncio.run(main())

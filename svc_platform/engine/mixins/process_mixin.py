@@ -205,13 +205,23 @@ class ProcessMixin(Generic[e_types.ProcessInputDataType]):
 # пример использования
 async def main():
     from svc_platform.schemas import BaseSettings
-    from svc_platform.slots_manager import slots_init
-    slots_init(handlers_list=None, enable=False)
+    from svc_platform.slots_manager import slots_init, handler_print_message_factory
+    slots_init(handlers_list=[handler_print_message_factory()], enable=True)
     request_id = '#001'
-    pr = ProcessMixin(settings=BaseSettings(process_limit=1, process_cleanup_result_ttl=1, process_cleanup_interval=1))
-    task = asyncio.create_task(pr.process(request_id=request_id, data=EngineIOSchemas.process_input_data()))
-    await task
-    print(pr.get_process_result(request_id=request_id))
+    mixin = ProcessMixin(
+        settings=BaseSettings(process_limit=1, process_cleanup_result_ttl=1, process_cleanup_interval=1))
+    tasks = []
+    for i in range(2):
+        task = asyncio.create_task(mixin.process(request_id=f'#00{i}', data=EngineIOSchemas.process_input_data()))
+        tasks.append(task)
+
+    await asyncio.sleep(1)
+    mixin.stop_process(request_id='#000')
+    await asyncio.sleep(0.2)
+    print(mixin._process_tasks_registry)
+
+    await asyncio.gather(*tasks)
+    # print(pr.get_process_result(request_id=request_id))
 
 
 if __name__ == '__main__':

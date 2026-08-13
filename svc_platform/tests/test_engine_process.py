@@ -2,21 +2,61 @@ import asyncio
 import pytest
 from svc_platform.engine import EngineExc
 from svc_platform.tests.conftest import EngineTestSuite
+from dataclasses import dataclass, field
+
+
+@dataclass
+class TaskParameters:
+    """Модель для запускаемых process"""
+    tasks_list: list[asyncio.Task] = field(default_factory=list)
+    requests_id_list: list[str] = field(default_factory=list)
 
 
 class EngineTestProcess(EngineTestSuite):
-    async def test_process(self, test_engine_factory, eingine_io_schemas):
-        """Проверка запуска process, что он появляется в реестре, и удаляется из него после потребления результата"""
+
+    async def __run_tasks(
+            self, engine, engine_io_schemas, request_id_map: list[str] = None, count: int = 1,
+            wait_for_tasks_runned: bool = True,
+    ) -> TaskParameters:
+        """
+        Запускает процесс, и возвращает объект с списком задач, request_id, и очередями.
+        """
+        parameters = TaskParameters()
+
+        for i in range(count):
+            request_id = request_id_map[i] if request_id_map is not None else f'#00{i}'
+            task = asyncio.create_task(
+                engine.process(
+                    data=engine_io_schemas.process_input_data,
+                    request_id=request_id,
+                )
+            )
+            parameters.tasks_list.append(task)
+            parameters.requests_id_list.append(request_id)
+
+        if wait_for_tasks_runned:
+            # ожидание что процессы были запущены
+            for i in range(len(parameters.tasks_list)):
+                assert await self.wait_for_task_state(
+                    request_id=parameters.requests_id_list[i],
+                    registry=engine._process_tasks_registry,  # noqa
+                    target_state=True,
+                ), 'процессы запущены не были'
+
+        return parameters
+
+    async def test_process(self, test_engine_factory, engine_io_schemas):
+        """Проверка, что process появляется в реестре и удаляется после потребления результата."""
         _ = self
         engine = test_engine_factory()
         await engine.start()
-        request_id = '#001'
-        task = asyncio.create_task(
-            engine.process(
-                data=eingine_io_schemas.process_input_data,
-                request_id=request_id
-            )
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=1,
         )
+        task = process_parameters.tasks_list[0]
+        request_id = process_parameters.requests_id_list[0]
         await task  # ожидание завершения задачи
         engine.get_process_result(request_id=request_id)  # потребление результата
         # проверка что процесс был удален из реестра
@@ -24,126 +64,116 @@ class EngineTestProcess(EngineTestSuite):
             request_id=request_id, registry=engine._process_tasks_registry, target_state=False,
         ), 'реестр задач не был очищен'
 
-    async def test_process_double_request_id(self, test_engine_factory, eingine_io_schemas, settings):
-        """Проверка запуска дублирования request_id - попытка запустить две команды с одинаковым id"""
-        _ = self
-        settings.execute_limit = 2  # разрешить запуск 2 задач одновременно
-        engine = test_engine_factory(settings_override=settings)
-        await engine.start()
-        tasks = []
-        for _ in range(2):
-            task = asyncio.create_task(
-                engine.process(
-                    data=eingine_io_schemas.process_input_data,
-                    request_id='#001',  # одинаковый id
-                )
-            )
-            tasks.append(task)
-
-        # должно отработать исключение ProcessRequestIdAlreadyExists
-        with pytest.raises(EngineExc.ProcessRequestIdAlreadyExists):
-            await asyncio.gather(*tasks)
-
-    async def test_process_stop(self, test_engine_factory, eingine_io_schemas):
-        """Проверка что execute stop работает"""
+    async def test_process_double_request_id(self, test_engine_factory, engine_io_schemas, settings):
+        """Проверка, что запуск двух process с одинаковым request_id вызывает исключение ProcessRequestIdAlreadyExists."""
         _ = self
         engine = test_engine_factory()
         await engine.start()
-        request_id = '#001'
-        # запуск задачи
-        asyncio.create_task(
-            engine.process(
-                data=eingine_io_schemas.process_input_data,
-                request_id=request_id
-            )
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=2,  # запуск двух задач
+            request_id_map=['#001', '#001'],  # одинаковые request_id
         )
-        # ожидание запуска задачи
-        assert await self.wait_for_task_state(
-            request_id=request_id, registry=engine._process_tasks_registry, target_state=True,
-        ), 'задача не была запущена в timeout'
+        # должно отработать исключение ProcessRequestIdAlreadyExists
+        with pytest.raises(EngineExc.ProcessRequestIdAlreadyExists):
+            await asyncio.gather(*process_parameters.tasks_list)
+        # задача при этом должна остаться в реестре
+        assert '#001' in engine._process_tasks_registry, 'Первая задача была удалена'
+
+    async def test_process_stop(self, test_engine_factory, engine_io_schemas):
+        """
+        Проверка, что process останавливается по request_id и удаляется из реестра.
+        """
+        _ = self
+        engine = test_engine_factory()
+        await engine.start()
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=1,
+            wait_for_tasks_runned=True,
+        )
+        tasks = process_parameters.tasks_list
+        request_id = process_parameters.requests_id_list[0]
         # остановка process
         engine.stop_process(request_id=request_id)
         # ожидание отмены задачи
         assert await self.wait_for_task_state(
             request_id=request_id, registry=engine._process_tasks_registry, target_state=False,
         ), 'задача не была остановлена в timeout'
+        # оставшаяся задача сверху должна выполниться
+        await asyncio.gather(*tasks)
 
-    async def test_process_stop_no_request_id(self, test_engine_factory, eingine_io_schemas):
-        """Попытка остановить process по неправильному id, должно выброситься исключение processNoFindReqestId"""
+    async def test_process_stop_no_request_id(self, test_engine_factory, engine_io_schemas):
+        """Проверка, что остановка process по несуществующему request_id вызывает исключение ProcessNoFindReqestId."""
         _ = self
         engine = test_engine_factory()
         await engine.start()
-        request_id = '#001'
-        asyncio.create_task(
-            engine.process(
-                data=eingine_io_schemas.process_input_data,
-                request_id=request_id
-            )
+        await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=1,
+            wait_for_tasks_runned=True,
         )
-        # ожидание запуска задачи
-        assert await self.wait_for_task_state(
-            request_id=request_id, registry=engine._process_tasks_registry, target_state=True,
-        ), 'задача не была запущена в timeout'
         # остановка process
         with pytest.raises(EngineExc.ProcessNoFindReqestId):
-            engine.stop_process(request_id='#002')
+            engine.stop_process(request_id='_unkonw_id_test_')
 
-    async def test_process_get_result_by_id(self, test_engine_factory, eingine_io_schemas):
-        """Получение результата по process id, проверка что результат соответствует схеме process_output_data"""
+    #
+    async def test_process_get_result_by_id(self, test_engine_factory, engine_io_schemas):
+        """Проверка, что результат process соответствует схеме process_output_data."""
         _ = self
         engine = test_engine_factory()
         await engine.start()
-        request_id = '#001'
-        task = asyncio.create_task(
-            engine.process(
-                data=eingine_io_schemas.process_input_data,
-                request_id=request_id
-            )
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=1,
+            wait_for_tasks_runned=True,
         )
+        task = process_parameters.tasks_list[0]
+        request_id = process_parameters.requests_id_list[0]
         await task
         # получение и проверка результата
         result = engine.get_process_result(request_id=request_id)
         assert result is not None
         try:
-            eingine_io_schemas.process_output_data.model_validate(result)
+            engine_io_schemas.process_output_data.model_validate(result)
         except Exception:
             raise
 
-    async def test_process_get_result_no_completed(self, test_engine_factory, eingine_io_schemas):
-        """Попытка получить результат раньше времени (не дождавшись выполнения корутины) ProcessResultNotCompleted"""
+    async def test_process_get_result_no_completed(self, test_engine_factory, engine_io_schemas):
+        """Проверка, что запрос результата process до завершения вызывает исключение ProcessResultNotCompleted."""
         _ = self
         engine = test_engine_factory()
         await engine.start()
-        request_id = '#001'
-        asyncio.create_task(
-            engine.process(
-                data=eingine_io_schemas.process_input_data,
-                request_id=request_id
-            )
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=1,
+            wait_for_tasks_runned=True,
         )
-        # ожидание запуска задачи
-        assert await self.wait_for_task_state(
-            request_id=request_id, registry=engine._process_tasks_registry, target_state=True,
-        ), 'задача не была запущена в timeout'
+        request_id = process_parameters.requests_id_list[0]
         # не дожидаясь завершения задачи, мгновенно запросить результат
         with pytest.raises(EngineExc.ProcessResultNotCompleted):
             engine.get_process_result(request_id=request_id)
 
-    async def test_process_cleanup(self, test_engine_factory, eingine_io_schemas, settings):
-        """Удаление устаревших ответов процессов"""
+    async def test_process_cleanup(self, test_engine_factory, engine_io_schemas, settings):
+        """Проверка, что устаревший результат process удаляется по истечении TTL."""
         _ = self
-        settings.process_cleanup_enable = True  # включить функцию удаления устаревших задач
-        settings.process_cleanup_result_ttl = 0.1  # время опроса проверки устаревших задач
+        settings.process_cleanup_enable = True
+        settings.process_cleanup_result_ttl = 0.2
         engine = test_engine_factory()
         await engine.start()
-        request_id = '#001'
-        # запустить задачу
-        task = asyncio.create_task(
-            engine.process(
-                data=eingine_io_schemas.process_input_data,
-                request_id=request_id
-            )
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=1,
+            wait_for_tasks_runned=True,
         )
+        request_id = process_parameters.requests_id_list[0]
+        task = process_parameters.tasks_list[0]
         await task
         # после вычисления ожидать n времени (чтобы задача была признана устаревшей)
         await asyncio.sleep(settings.process_cleanup_result_ttl)
@@ -152,61 +182,43 @@ class EngineTestProcess(EngineTestSuite):
             request_id=request_id, registry=engine._process_tasks_registry, target_state=False,
         ), 'устаревший результат не был удален'
 
-    async def test_process_limit(self, test_engine_factory, eingine_io_schemas, settings):
-        """Лимиты на одновременный запуск процессов, проверить что в один момент времени выполняется limit процессов"""
+    async def test_process_limit(self, test_engine_factory, engine_io_schemas, settings):
+        """Проверка, что process не запускает в одном семафоре, больше задач, чем установлено в process_limit."""
         _ = self
-        tasks_count = 3
-        settings.process_limit = 2  # Установка лимита на выполнение задач
-        engine = test_engine_factory(settings_override=settings)
+        tasks_count = 2  # всего 2 задачи
+        settings.process_limit = 1  # ограничение семафора в 1 задачу
+        engine = test_engine_factory()
         await engine.start()
-        tasks = []
-        for i in range(tasks_count):  # запуск большего количества задач
-            task = asyncio.create_task(
-                engine.process(
-                    data=eingine_io_schemas.process_input_data,
-                    request_id=f'#00{i}',  # одинаковый id
-                )
-            )
+        process_parameters = await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=tasks_count,
+            wait_for_tasks_runned=False,
+        )
 
-            tasks.append(task)
+        first_task_request_id = process_parameters.requests_id_list[0]
+        first_task = process_parameters.tasks_list[0]
+        second_task_request_id = process_parameters.requests_id_list[1]
+        # ожидание завершения 1 задачи
+        await first_task
+        # проверка что первая задача готова (есть результат)
+        assert engine._process_tasks_registry[first_task_request_id].event.is_set(), 'задача не была завершена'
+        # вторая задача должна быть ещё unset
+        assert not engine._process_tasks_registry[
+            second_task_request_id].event.is_set(), 'вторая задача посчиталась раньше времени'
 
-        # ожидание запуска задач
-        for i in range(settings.process_limit):
-            assert await self.wait_for_task_state(
-                request_id=f'#00{i}', registry=engine._process_tasks_registry, target_state=True,
-            ), 'задача не была запущена в timeout'
-
-        # проверка что количество запущенных в один момент времени задач не больше чем limit
-        assert settings.process_limit == len(engine._process_tasks_registry), 'Запущенных задач больше лимита'
-        # дождаться завершения задачи
-        await asyncio.gather(*tasks)
-        # проверка что все задачи выполнились (и те которые выходили за лимит одновременного запуска)
-        assert len([True for task in tasks if task.done()]) == len(tasks), 'Не все задачи выполнились'
-
-    async def test_process_stop_all_tasks(self, test_engine_factory, eingine_io_schemas, settings):
-        """Проверка что все процессы отменяются по process_stop_all,
-        включая те которые не попали в семафор на момент остановки всех процессов"""
+    async def test_process_stop_all_tasks(self, test_engine_factory, engine_io_schemas, settings):
+        """Проверка, что process_stop_all останавливает все задачи и устанавливает флаг остановки."""
         _ = self
-        tasks_count = 3
-        settings.process_limit = 2  # Установка лимита на выполнение процессов
-        engine = test_engine_factory(settings_override=settings)
+        settings.process_limit = 3  # 3 задачи одновременно
+        engine = test_engine_factory()
         await engine.start()
-        tasks = []
-        for i in range(tasks_count):  # запуск большего количества процессов
-            task = asyncio.create_task(
-                engine.process(
-                    data=eingine_io_schemas.process_input_data,
-                    request_id=f'#00{i}',  # одинаковый id
-                )
-            )
-
-            tasks.append(task)
-        # ожидание запуска задач
-        for i in range(settings.process_limit):
-            assert await self.wait_for_task_state(
-                request_id=f'#00{i}', registry=engine._process_tasks_registry, target_state=True,
-            ), 'задача не была запущена в timeout'
+        await self.__run_tasks(
+            engine=engine,
+            engine_io_schemas=engine_io_schemas,
+            count=3,
+            wait_for_tasks_runned=True,
+        )
         await engine.stop()
         assert engine._process_tasks_registry == {}, 'задачи не были удалены из реестра'
         assert engine._process_stop_all is True, 'Флаг остановки всех задач не был установлен'
-

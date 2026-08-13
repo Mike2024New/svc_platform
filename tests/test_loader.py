@@ -3,7 +3,7 @@ import pytest
 from svc_platform.tests.test_engine_run import EngineTestRun
 from svc_platform.tests.test_engine_execute import EngineTestExecute
 from svc_platform.tests.test_engine_process import EngineTestProcess
-from svc_platform.tests.test_engine_streaming import EngineTestStreaming
+from svc_platform.tests.test_engine_producer_streaming import EngineTestStreaming
 from svc_platform.tests.test_server_run import ApiTestRun
 from svc_platform.tests.test_server_process import ApiTestProcess
 from svc_platform.tests.test_server_execute import ApiTestExecute

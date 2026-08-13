@@ -4,7 +4,7 @@ from time import sleep
 
 
 class ApiTestExecute(EngineTestSuite):
-    def test_execute(self, test_server, eingine_io_schemas):
+    def test_execute(self, test_server, engine_io_schemas):
         """Проверка что execute запускается и возвращает request_id"""
         _ = self
         url = test_server
@@ -12,7 +12,7 @@ class ApiTestExecute(EngineTestSuite):
         # проверка что execute запущен
         res = requests.post(
             url=url.execute,
-            json=eingine_io_schemas.execute_input_data.model_dump()
+            json=engine_io_schemas.execute_input_data.model_dump()
         )
         assert res.status_code == 200
         data = res.json()
@@ -20,7 +20,7 @@ class ApiTestExecute(EngineTestSuite):
         request_id = data.get('request_id', None)
         assert request_id is not None, f'/execute/ не вернул request_id'
 
-    def test_execute_interrupted(self, test_server, eingine_io_schemas):
+    def test_execute_interrupted(self, test_server, engine_io_schemas):
         """Проверка что execute запускается и возвращает request_id"""
         _ = self
         url = test_server
@@ -28,7 +28,7 @@ class ApiTestExecute(EngineTestSuite):
         # проверка что execute запущен
         res = requests.post(
             url=url.execute,
-            json=eingine_io_schemas.execute_input_data.model_dump()
+            json=engine_io_schemas.execute_input_data.model_dump()
         )
         assert res.status_code == 200
         data = res.json()
@@ -37,7 +37,7 @@ class ApiTestExecute(EngineTestSuite):
         res = requests.get(url.execute_stop, params={'request_id': request_id})
         assert res.status_code == 200, '/execute/ задача не была отменена'
 
-    async def test_execute_aiohttp_base(self, test_server, eingine_io_schemas, test_engine_factory):
+    async def test_execute_aiohttp_base(self, test_server, engine_io_schemas, test_engine_factory):
         """Базовый асинхронный тест с несколькими запросами, проверка что request_id не дублируются в engine"""
         _ = self
         url = test_server
@@ -48,7 +48,7 @@ class ApiTestExecute(EngineTestSuite):
                 response = await response.json()
                 return response
 
-        data = eingine_io_schemas.execute_input_data
+        data = engine_io_schemas.execute_input_data
         data = data.model_dump()
 
         # запуск задач

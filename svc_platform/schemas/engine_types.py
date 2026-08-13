@@ -18,5 +18,7 @@ BaseSettingsType = TypeVar('BaseSettingsType', bound=BaseSettings)
 ProcessInputDataType = TypeVar('ProcessInputDataType', bound=EngineIOSchemas.process_input_data)
 ProcessOutputDataType = TypeVar('ProcessOutputDataType', bound=EngineIOSchemas.process_output_data)
 ExecuteInputDataType = TypeVar('ExecuteInputDataType', bound=EngineIOSchemas.execute_input_data)
-StreamInputDataType = TypeVar('StreamInputDataType', bound=EngineIOSchemas.streaming_input_data)
-StreamOutputDataType = TypeVar('StreamOutputDataType', bound=EngineIOSchemas.streaming_output_data)
+ProducerStreamInputDataType = TypeVar('ProducerStreamInputDataType',
+                                      bound=EngineIOSchemas.producer_streaming_input_data)
+ProducerStreamOutputDataType = TypeVar('ProducerStreamOutputDataType',
+                                       bound=EngineIOSchemas.producer_streaming_output_data)

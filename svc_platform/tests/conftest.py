@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from svc_platform.engine import Engine
 from svc_platform.factories import message_bus_factory, server_factory, api_factory
 from svc_platform.schemas import Settings
-from svc_platform.slots_manager import slots_init, handler_message_bus_log_factory
+from svc_platform.slots_manager import slots_init, handler_message_bus_log_factory, handler_print_message_factory
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.urls import Urls
 from infrastructure_process_utils import find_free_port
@@ -14,11 +14,12 @@ from svc_platform.factories import engine_factory
 
 @dataclass
 class Parameters:
+    """Предопределенные параметры для тестов (engine_io_schemas)"""
     process_input_data: EngineIOSchemas.process_input_data
     process_output_data: EngineIOSchemas.process_output_data
     execute_input_data: EngineIOSchemas.execute_input_data
-    streaming_input_data: EngineIOSchemas.streaming_input_data
-    streaming_output_data: EngineIOSchemas.streaming_output_data
+    producer_streaming_input_data: EngineIOSchemas.producer_streaming_input_data
+    producer_streaming_output_data: EngineIOSchemas.producer_streaming_output_data
     request_id: str = '#000'
 
 
@@ -26,14 +27,14 @@ class EngineTestSuite:
     """Тесты переносимые в дочерние проекты (при необходимости можно переопределять тесты там). А также подменять движки"""
 
     @pytest.fixture
-    def eingine_io_schemas(self):
-        """Схема input/output движка"""
+    def engine_io_schemas(self):
+        """Схема input/output/stream движка, важно в дочерних проектах переопределять эти схемы с параметрами"""
         return Parameters(
             process_input_data=EngineIOSchemas.process_input_data(text='stub', iterations=5),
             process_output_data=EngineIOSchemas.process_output_data(result='stub'),
             execute_input_data=EngineIOSchemas.execute_input_data(text='stub'),
-            streaming_input_data=EngineIOSchemas.streaming_input_data(text='stub'),
-            streaming_output_data=EngineIOSchemas.streaming_output_data(text='stub'),
+            producer_streaming_input_data=EngineIOSchemas.producer_streaming_input_data(text='stub'),
+            producer_streaming_output_data=EngineIOSchemas.producer_streaming_output_data(text='stub'),
         )
 
     @pytest.fixture
@@ -56,11 +57,14 @@ class EngineTestSuite:
                 engine_class=Engine,
                 settings=settings_override or settings
             )
-            # если нужно логирование:
+            # если нужно логирование через шину сообщений:
             message_bus_add, message_bus_settings = message_bus_factory(settings=custom_settings)
             message_bus_settings.set_component_name(component=f"{custom_settings.name}_test")
             slots_init(
-                handlers_list=[handler_message_bus_log_factory(message_bus_add)],
+                handlers_list=[
+                    # handler_message_bus_log_factory(message_bus_add),
+                    handler_print_message_factory(),
+                ],
                 enable=False,
             )
             return engine
@@ -87,7 +91,7 @@ class EngineTestSuite:
 
     @staticmethod
     async def wait_for_task_state(
-            request_id, registry, target_state: bool = True, timeout: float = 30.0, step: float = 0.1,
+            request_id, registry, target_state: bool = True, timeout: float = 5.0, step: float = 0.1,
     ):
         """
         Ожидание, что задача в реестре достигнет целевого состояния (появится или исчезнет) за отведенное время.

@@ -142,7 +142,7 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
 
             # получение входных данных от клиента (с валидацией)
             try:
-                data = engine_io_schemas.streaming_input_data(**await websocket.receive_json())
+                data = engine_io_schemas.producer_streaming_input_data(**await websocket.receive_json())
             except ValueError:
                 await websocket.send_json(
                     StreamResponse(
@@ -155,7 +155,7 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 )
                 return
 
-            async def async_callback(chunk_in: engine_io_schemas.streaming_output_data):
+            async def async_callback(chunk_in: engine_io_schemas.producer_streaming_output_data):
                 """обработка чанков (отправка клиенту)"""
                 nonlocal closed_by_client
                 try:
@@ -171,10 +171,10 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 except WebSocketDisconnect:
                     closed_by_client = True
                     if stream_started:  # закрыть стриминг если он был открыт
-                        engine.stop_stream(request_id=request_id)
+                        engine.stop_producer_stream(request_id=request_id)
 
             stream_started = True
-            await engine.stream(callback=async_callback, data=data, request_id=request_id)
+            await engine.producer_stream(callback=async_callback, data=data, request_id=request_id)
             # сообщить клиенту что соединение закрыто
             if not closed_by_client:
                 await websocket.send_json(
@@ -201,7 +201,7 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 except Exception:  # noqa
                     pass
                 try:
-                    engine.stop_stream(request_id=request_id)
+                    engine.stop_producer_stream(request_id=request_id)
                 except EngineExc.StreamNoFindReqestId:
                     pass
             slots.slot11(name=settings.name, err=err, request_id=request_id)

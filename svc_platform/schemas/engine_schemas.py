@@ -22,12 +22,12 @@ class ProcessOutputData(EngineIOBase):
     result: Any
 
 
-class StreamingInputData(EngineIOBase):
+class ProducerStreamingInputData(EngineIOBase):
     text: str = 'stub'
     iterations: int = 10
 
 
-class StreamingOutputData(EngineIOBase):
+class ProducerStreamingOutputData(EngineIOBase):
     text: str = 'stub'
 
 
@@ -36,5 +36,5 @@ class EngineIOSchemas:
     process_input_data = ProcessInputData
     execute_input_data = ExecuteInputData
     process_output_data = ProcessOutputData
-    streaming_input_data = StreamingInputData
-    streaming_output_data = StreamingOutputData
+    producer_streaming_input_data = ProducerStreamingInputData
+    producer_streaming_output_data = ProducerStreamingOutputData
