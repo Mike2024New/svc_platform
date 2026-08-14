@@ -95,7 +95,8 @@ class EngineTestProducerStreaming(EngineTestSuite):
         # анализ 1 чанка, что вернулся корректный тип данных
         chunk = stream_queue.get(timeout=1)
         try:
-            engine_io_schemas.producer_streaming_output_data.model_validate(chunk)
+            # сперва нужно результат распаковать в словарь, за тем уже валидировать через модель
+            engine_io_schemas.producer_streaming_output_data.model_validate(chunk.model_dump())
         except Exception:
             raise ValueError(
                 f'producer_stream, возвращает чанк не согласованный со схемой {engine_io_schemas.process_output_data.__class__.__name__}'

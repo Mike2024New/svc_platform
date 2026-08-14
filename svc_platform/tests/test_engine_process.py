@@ -139,7 +139,8 @@ class EngineTestProcess(EngineTestSuite):
         result = engine.get_process_result(request_id=request_id)
         assert result is not None
         try:
-            engine_io_schemas.process_output_data.model_validate(result)
+            # сперва нужно результат распаковать в словарь, за тем уже валидировать через модель
+            engine_io_schemas.process_output_data.model_validate(result.model_dump())
         except Exception:
             raise ValueError(
                 f'process, возвращает результат не согласованный со схемой {engine_io_schemas.process_output_data.__class__.__name__}'
