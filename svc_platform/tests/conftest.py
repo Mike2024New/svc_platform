@@ -43,7 +43,7 @@ class EngineTestSuite:
         settings_model = Settings(
             execute_limit=1,
             process_limit=1,
-            stream_limit=1,
+            stream_limit=3,
         )
         return settings_model
 

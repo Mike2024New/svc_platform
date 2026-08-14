@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.58.0"
+version = "0.59.0"
 description = "Платформа для запуска сервисов, `svc_` стандарт (репозитории Mike2024New которые содержат `svc_`"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -21,7 +21,6 @@ include = [
     "svc_platform*",
 ]
 
-
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
@@ -31,8 +30,10 @@ pythonpath = [
     ".",
 ]
 
-[tool.uv.sources]
-infrastructure2 = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = ".", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
+[tool.uv.sources.infrastructure2]
+git = "https://github.com/mike2024new/infrastructure2.git"
+subdirectory = "."
+rev = "2bb45a07702263d0b927fa6b987ac452a15986e4"
 
 [dependency-groups]
 dev = [

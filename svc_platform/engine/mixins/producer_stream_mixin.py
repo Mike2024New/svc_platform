@@ -70,8 +70,8 @@ class ProducerStreamMixin(Generic[e_types.ProducerStreamInputDataType]):
                 self._producer_stream_tasks_registry.pop(request_id, None)
 
     async def _on_producer_stream(
-            self, data: e_types.ProducerStreamInputDataType, callback, event: asyncio.Event, request_id: str, *args,
-            **kwargs
+            self, data: e_types.ProducerStreamInputDataType, callback: Callable[[bytes], Awaitable[None]],
+            event: asyncio.Event, request_id: str, *args, **kwargs
     ) -> None:
         """
         (Заглушка! В наследниках полностью переопределить метод, (без super) )
@@ -104,10 +104,12 @@ class ProducerStreamMixin(Generic[e_types.ProducerStreamInputDataType]):
         for i in range(iterations):
             if event.is_set():
                 return
-            text = f'stream {request_id} stub: chunk {str(i + 1).zfill(2)}/{iterations}'
-            bytes_data = text.encode('utf-8')
+            result = EngineIOSchemas.producer_streaming_output_data(
+                text=f'stream {request_id} stub: chunk {str(i + 1).zfill(2)}/{iterations}'
+            ).model_dump_json()
+            bytes_data = result.encode('utf-8')
             await callback(bytes_data)
-            await asyncio.sleep(time_step) # для asyncio необходима хотябы минимальная задержка даже в 0
+            await asyncio.sleep(time_step)  # для asyncio необходима хотябы минимальная задержка даже в 0
 
     def stop_producer_stream(self, request_id: str):
         """
