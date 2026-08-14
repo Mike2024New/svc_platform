@@ -30,7 +30,7 @@ class EngineTestSuite:
     def engine_io_schemas(self):
         """Схема input/output/stream движка, важно в дочерних проектах переопределять эти схемы с параметрами"""
         return Parameters(
-            process_input_data=EngineIOSchemas.process_input_data(text='stub', iterations=5),
+            process_input_data=EngineIOSchemas.process_input_data(text='stub'),
             process_output_data=EngineIOSchemas.process_output_data(result='stub'),
             execute_input_data=EngineIOSchemas.execute_input_data(text='stub'),
             producer_streaming_input_data=EngineIOSchemas.producer_streaming_input_data(text='stub'),
