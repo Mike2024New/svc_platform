@@ -98,7 +98,7 @@ class EngineTestProducerStreaming(EngineTestSuite):
             engine_io_schemas.producer_streaming_output_data.model_validate(chunk)
         except Exception:
             raise ValueError(
-                f'producer stream, возвращает чанк не согласованный со схемой producer_streaming_output_data'
+                f'producer_stream, возвращает чанк не согласованный со схемой {engine_io_schemas.process_output_data.__class__.__name__}'
             )
 
         # остановка стриминга
