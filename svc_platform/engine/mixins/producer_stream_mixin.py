@@ -17,7 +17,7 @@ class ProducerStreamMixin(Generic[e_types.ProducerStreamInputDataType]):
         self._producer_stream_stop_all = False  # во внешнем движке нужно установить эту переменную в false в методе start
 
     async def producer_stream(
-            self, callback: Callable[[e_types.ProducerStreamOutputDataType], Awaitable[None]],
+            self, callback: Callable[[bytes], Awaitable[None]],
             data: e_types.ProducerStreamInputDataType,
             request_id: str, *args, **kwargs
     ) -> None:
@@ -104,11 +104,10 @@ class ProducerStreamMixin(Generic[e_types.ProducerStreamInputDataType]):
         for i in range(iterations):
             if event.is_set():
                 return
-            result = EngineIOSchemas.producer_streaming_output_data(
-                text=f'stream {request_id} stub: chunk {str(i + 1).zfill(2)}/{iterations}'
-            )
-            await callback(result)
-            await asyncio.sleep(time_step)
+            text = f'stream {request_id} stub: chunk {str(i + 1).zfill(2)}/{iterations}'
+            bytes_data = text.encode('utf-8')
+            await callback(bytes_data)
+            await asyncio.sleep(time_step) # для asyncio необходима хотябы минимальная задержка даже в 0
 
     def stop_producer_stream(self, request_id: str):
         """

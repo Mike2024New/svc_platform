@@ -105,7 +105,7 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
     # =============== STREAM =================
 
     async def producer_stream(
-            self, callback: Callable[[e_types.ProducerStreamOutputDataType], Awaitable[None]],
+            self, callback: Callable[[bytes], Awaitable[None]],
             data: e_types.ProducerStreamInputDataType,
             request_id: str, *args, **kwargs
     ) -> None:

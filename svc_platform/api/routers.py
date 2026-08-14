@@ -155,19 +155,12 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 )
                 return
 
-            async def async_callback(chunk_in: engine_io_schemas.producer_streaming_output_data):
+            async def async_callback(chunk_in: bytes):
                 """обработка чанков (отправка клиенту)"""
                 nonlocal closed_by_client
                 try:
                     if not closed_by_client:
-                        await websocket.send_json(
-                            StreamResponse(
-                                type='result',
-                                chunk=chunk_in,
-                                message='стриминг продолжается',
-                                request_id=request_id,
-                            ).model_dump()
-                        )
+                        await websocket.send_bytes(chunk_in)
                 except WebSocketDisconnect:
                     closed_by_client = True
                     if stream_started:  # закрыть стриминг если он был открыт

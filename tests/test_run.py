@@ -10,8 +10,8 @@ from svc_platform.tests.test_engine_producer_streaming import EngineTestProducer
 
 class TestsEngine(
     # EngineTestRun,
-    EngineTestProcess,
+    # EngineTestProcess,
     # EngineTestExecute,
-    # EngineTestProducerStreaming,
+    EngineTestProducerStreaming,
 ):
     pass
