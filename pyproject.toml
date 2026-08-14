@@ -1,17 +1,11 @@
 [project]
 name = "svc_platform"
-version = "0.57.0"
+version = "0.58.0"
 description = "Платформа для запуска сервисов, `svc_` стандарт (репозитории Mike2024New которые содержат `svc_`"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "infrastructure-server",
-    "infrastructure-cli-utils",
-    "infrastructure-message-bus",
-    "infrastructure-path-utils",
-    "infrastructure-http-clients",
-    "infrastructure-process-utils",
-    "infrastructure-streaming",
+    "infrastructure2",
     "websockets>=16.1.1",
     "aiohttp>=3.14.3",
 ]
@@ -25,17 +19,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = [
     "svc_platform*",
-
 ]
 
-[tool.uv.sources]
-infrastructure-server = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_server", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
-infrastructure-cli-utils = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_cli_utils", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
-infrastructure-message-bus = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_message_bus", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
-infrastructure-path-utils = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_path_utils", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
-infrastructure-http-clients = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_http_clients", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
-infrastructure-process-utils = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_process_utils", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
-infrastructure-streaming = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = "packages/infrastructure_streaming", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -45,6 +30,9 @@ asyncio_mode = "auto"
 pythonpath = [
     ".",
 ]
+
+[tool.uv.sources]
+infrastructure2 = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = ".", rev = "2bb45a07702263d0b927fa6b987ac452a15986e4" }
 
 [dependency-groups]
 dev = [
