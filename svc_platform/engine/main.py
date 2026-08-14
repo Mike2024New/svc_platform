@@ -19,7 +19,7 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
         """
         self._settings = settings
         self._running = False
-        self.parameters: dict[str, Any] = {'running': self._running}
+        self.parameters: dict[str, Any] = {'running': self._running, 'settings': self._settings.model_dump()}
         self._on_set_parameters()
         self._stop_component = asyncio.Event()  # состояние Engine
 
@@ -30,7 +30,7 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
 
     def _on_set_parameters(self):
         """логика записи параметров (например информация об используемом устройстве)"""
-        self.parameters['settings'] = self._settings.model_dump()
+        pass
 
     # =============== START =================
 
