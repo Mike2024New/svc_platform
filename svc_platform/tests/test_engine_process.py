@@ -141,7 +141,9 @@ class EngineTestProcess(EngineTestSuite):
         try:
             engine_io_schemas.process_output_data.model_validate(result)
         except Exception:
-            raise
+            raise ValueError(
+                f'process, возвращает чанк не согласованный со схемой {engine_io_schemas.__class__.__name__}'
+            )
 
     async def test_process_get_result_no_completed(self, test_engine_factory, engine_io_schemas):
         """Проверка, что запрос результата process до завершения вызывает исключение ProcessResultNotCompleted."""
