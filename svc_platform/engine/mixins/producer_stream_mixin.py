@@ -13,7 +13,7 @@ class ProducerStreamMixin(Generic[e_types.ProducerStreamInputDataType]):
     def __init__(self, settings: SettingsSchemaType):
         self._settings = settings
         self._producer_stream_tasks_registry: dict[str, StreamTask] = {}
-        self._producer_stream_semaphore = asyncio.Semaphore(self._settings.stream_limit)
+        self._producer_stream_semaphore = asyncio.Semaphore(self._settings.producer_stream_limit)
         self._producer_stream_stop_all = False  # во внешнем движке нужно установить эту переменную в false в методе start
 
     async def producer_stream(
@@ -140,7 +140,7 @@ class ProducerStreamMixin(Generic[e_types.ProducerStreamInputDataType]):
         self._producer_stream_stop_all = True
         await stop_all_async_tasks(
             tasks_registry=self._producer_stream_tasks_registry,
-            timeout=self._settings.stream_cancel_all_timeout,
+            timeout=self._settings.producer_stream_cancel_all_timeout,
         )
 
 
@@ -149,7 +149,7 @@ async def main():
     from svc_platform.schemas import BaseSettings
     request_id = '#001'
     request_id2 = '#002'
-    stream = ProducerStreamMixin(settings=BaseSettings(stream_limit=1, stream_cancel_all_timeout=10))
+    stream = ProducerStreamMixin(settings=BaseSettings(producer_stream_limit=1, producer_stream_cancel_all_timeout=10))
 
     async def callback(x):
         print(x)

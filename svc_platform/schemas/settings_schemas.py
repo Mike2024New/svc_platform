@@ -16,8 +16,8 @@ class BaseSettings(BaseModel):
     process_cleanup_interval: float = Field(default=1, description='Интервал просмотра устаревания выполненных задач')
     process_cleanup_result_ttl: float = Field(default=300, description='Время хранения результата (в секундах)')
     # настройки стриминга
-    stream_limit: int = Field(default=3, description='Максимальное колличество стримингов выполняемых одновременно')
-    stream_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение процессов если остановка')
+    producer_stream_limit: int = Field(default=3, description='Максимальное колво стримингов выполняемых одновременно')
+    producer_stream_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение процессов (stop)')
 
 
 SettingsSchemaType = TypeVar('SettingsSchemaType', bound=BaseSettings)

@@ -66,6 +66,9 @@ class EngineTestExecute(EngineTestSuite):
     async def test_execute_double_request_id(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что запуск двух execute с одинаковым request_id вызывает исключение ExecuteRequestIdAlreadyExists."""
         _ = self
+        if settings.execute_limit <= 1:
+            return  # нет смысла в тесте, так как одновременно разрешено не более одного процесса
+
         settings.execute_limit = 2  # запуск двух задач параллельно
         engine = test_engine_factory(settings_override=settings)
         await engine.start()
@@ -119,6 +122,8 @@ class EngineTestExecute(EngineTestSuite):
     async def test_execute_limit(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что execute не запускает больше задач, чем установлено в execute_limit."""
         _ = self
+        if settings.execute_limit <= 1:
+            return  # нет смысла в тесте, так как одновременно разрешено не более одного процесса
         tasks_count = 2  # всего 2 задачи
         settings.execute_limit = 1  # ограничение семафора в 1 задачу
         engine = test_engine_factory()
@@ -141,17 +146,15 @@ class EngineTestExecute(EngineTestSuite):
         assert not engine._execute_tasks_registry[
             second_task_request_id].event.is_set(), 'вторая задача выполнилась раньше времени'
 
-
     async def test_execute_stop_all_tasks(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что execute_stop_all останавливает все задачи и устанавливает флаг остановки."""
         _ = self
-        settings.execute_limit = 3  # 3 задачи одновременно
         engine = test_engine_factory()
         await engine.start()
         await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
-            count=3,
+            count=settings.execute_limit,
             wait_for_tasks_runned=True,
         )
         await engine.stop()

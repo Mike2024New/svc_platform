@@ -76,6 +76,10 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
             await self._process_stop_all_tasks()  # остановить все процессы
             await self.execute_stop_all_tasks()  # остановить все команды
             await self._producer_stream_stop_all_tasks()  # остановить все стриминговые задачи
+            # сбросить все реестры
+            self._execute_tasks_registry = {}
+            self._process_tasks_registry = {}
+            self._producer_stream_tasks_registry = {}
 
             slots.slot2(self._settings.name, parameters=self.parameters)
         except Exception as err:

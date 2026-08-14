@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from svc_platform.engine import Engine
 from svc_platform.factories import message_bus_factory, server_factory, api_factory
 from svc_platform.schemas import Settings
-from svc_platform.slots_manager import slots_init, handler_message_bus_log_factory, handler_print_message_factory
+from svc_platform.slots_manager import slots_init, handler_print_message_factory
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.urls import Urls
 from infrastructure_process_utils import find_free_port
@@ -41,9 +41,9 @@ class EngineTestSuite:
     def settings(self):
         """Системные настройки приложения"""
         settings_model = Settings(
-            execute_limit=1,
-            process_limit=1,
-            stream_limit=3,
+            execute_limit=3,
+            process_limit=3,
+            producer_stream_limit=3,
         )
         return settings_model
 

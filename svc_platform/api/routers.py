@@ -1,6 +1,7 @@
 import asyncio
 import uuid
-from fastapi import APIRouter, status, Depends, HTTPException, WebSocket
+from fastapi import APIRouter, status, Depends, HTTPException, WebSocket, Response
+from fastapi.responses import JSONResponse
 from starlette.websockets import WebSocketDisconnect
 from svc_platform.engine import Engine
 from svc_platform.slots_manager import slots
@@ -78,17 +79,36 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         except EngineExc.ProcessNoFindReqestId:
             raise
 
-    @app_router.get('/process_result/', status_code=status.HTTP_200_OK)
-    async def process_result(request_id: str) -> dict[str, str | engine_io_schemas.process_output_data]:
+    @app_router.get('/process_result/')
+    async def process_result(request_id: str):
         """Получение результата по request_id (коду который вернул /process/)"""
         try:
             result = engine.get_process_result(request_id=request_id)
+            if result is None:
+                raise HTTPException(status_code=404, detail="Результат не найден")
+            # Если результат — строка или словарь → JSON
+            if isinstance(result, (str, dict)):
+                return JSONResponse({
+                    'message': f'Результат для {request_id}',
+                    'result': result
+                })
+            # Если результат — байты → бинарный ответ (можно будет расширить заголовки?)
+            # В фабрике сервера параметр headers?
+            if isinstance(result, bytes):
+                return Response(
+                    content=result,
+                    media_type="application/octet-stream",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=result_{request_id}.bin"
+                    }
+                )
+            # Если результат — что-то другое → JSON
             return {'message': f'Результат для {request_id}', 'result': result}
-        except (
-                EngineExc.ProcessResultNotCompleted,  # процесс не завершен (вычисления ещё не готовы)
-                EngineExc.ProcessNoFindReqestId,  # неизвестный request_id, нет такой задачи
-        ):
-            raise
+
+        except EngineExc.ProcessResultNotCompleted:
+            raise HTTPException(status_code=202, detail="Результат ещё не готов")
+        except EngineExc.ProcessNoFindReqestId:
+            raise HTTPException(status_code=404, detail="Задача не найдена")
 
     # =============== EXECUTE ========================
 

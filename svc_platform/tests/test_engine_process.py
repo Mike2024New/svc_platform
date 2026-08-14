@@ -67,6 +67,9 @@ class EngineTestProcess(EngineTestSuite):
     async def test_process_double_request_id(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что запуск двух process с одинаковым request_id вызывает исключение ProcessRequestIdAlreadyExists."""
         _ = self
+        if settings.process_limit <= 1:
+            return  # нет смысла в тесте, так как одновременно разрешено не более одного процесса
+        settings.process_limit = 2  # запуск двух задач одновременно
         engine = test_engine_factory()
         await engine.start()
         process_parameters = await self.__run_tasks(
@@ -137,10 +140,14 @@ class EngineTestProcess(EngineTestSuite):
         await task
         # получение и проверка результата
         result = engine.get_process_result(request_id=request_id)
+        # проверка что результат есть
         assert result is not None
+        # проверка что результат в байтах
+        assert isinstance(result, bytes), 'process _on_process возвращает результат не в байтах'
+        # проверка типа результата
         try:
             # сперва нужно результат распаковать в словарь, за тем уже валидировать через модель
-            engine_io_schemas.process_output_data.model_validate(result.model_dump())
+            engine_io_schemas.process_output_data.model_validate_json(result)
         except Exception:
             raise ValueError(
                 f'process, метод _on_process возвращает результат не согласованный со схемой {engine_io_schemas.process_output_data.__class__.__name__}'
@@ -188,6 +195,9 @@ class EngineTestProcess(EngineTestSuite):
     async def test_process_limit(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что process не запускает в одном семафоре, больше задач, чем установлено в process_limit."""
         _ = self
+        if settings.process_limit <= 1:
+            return  # нет смысла в тесте, так как одновременно разрешено не более одного процесса
+        # для проверки достаточно двух задач
         tasks_count = 2  # всего 2 задачи
         settings.process_limit = 1  # ограничение семафора в 1 задачу
         engine = test_engine_factory()
@@ -213,15 +223,15 @@ class EngineTestProcess(EngineTestSuite):
     async def test_process_stop_all_tasks(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что process_stop_all останавливает все задачи и устанавливает флаг остановки."""
         _ = self
-        settings.process_limit = 3  # 3 задачи одновременно
         engine = test_engine_factory()
         await engine.start()
         await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
-            count=3,
+            count=settings.process_limit,
             wait_for_tasks_runned=True,
         )
         await engine.stop()
+        # проверка реестра и флага
         assert engine._process_tasks_registry == {}, 'задачи не были удалены из реестра'
         assert engine._process_stop_all is True, 'Флаг остановки всех задач не был установлен'

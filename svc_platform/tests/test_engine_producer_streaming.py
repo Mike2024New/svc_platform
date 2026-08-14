@@ -116,9 +116,9 @@ class EngineTestProducerStreaming(EngineTestSuite):
         StreamRequestIdAlreadyExists
         """
         _ = self
-        if settings.stream_limit <= 1:
+        if settings.producer_stream_limit <= 1:
             return  # не требуется тест на лимит запущенных процессов, так как в фикстуре разрешен всего 1
-        settings.stream_limit = 2  # разрешить запуск двух задач одновременно
+        settings.producer_stream_limit = 2  # разрешить запуск двух задач одновременно
         engine = test_engine_factory(settings_override=settings)
         await engine.start()
         stream_parameters = await self._run_stream_tasks(
@@ -187,10 +187,10 @@ class EngineTestProducerStreaming(EngineTestSuite):
     async def test_producer_stream_limit(self, test_engine_factory, engine_io_schemas, settings):
         """Проверка, что producer_stream не запускает больше задач, чем установлено в stream_limit."""
         _ = self
-        if settings.stream_limit <= 1:
+        if settings.producer_stream_limit <= 1:
             return  # не требуется тест на лимит запущенных процессов, так как в фикстуре разрешен всего 1
-        tasks_count = settings.stream_limit + 1  # всего 2 задачи
-        settings.stream_limit = 1  # ограничение семафора в 1 задачу
+        tasks_count = settings.producer_stream_limit + 1  # всего 2 задачи
+        settings.producer_stream_limit = 1  # ограничение семафора в 1 задачу
         engine = test_engine_factory()
         await engine.start()
         stream_parameters = await self._run_stream_tasks(
@@ -242,7 +242,7 @@ class EngineTestProducerStreaming(EngineTestSuite):
         stream_parameters = await self._run_stream_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
-            count=settings.stream_limit,
+            count=settings.producer_stream_limit,
         )
 
         # ожидание первого чанка (проверка что стриминг отдаёт результаты)

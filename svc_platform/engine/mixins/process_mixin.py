@@ -89,7 +89,7 @@ class ProcessMixin(
 
     async def _on_process(
             self, data: e_types.ProcessInputDataType, event: asyncio.Event, request_id: str, *args, **kwargs
-    ) -> e_types.ProcessOutputDataType | None:
+    ) -> bytes | None:
         """
         (Заглушка! В наследниках полностью переопределить метод, (без super) )
         Реализация логики process
@@ -99,7 +99,7 @@ class ProcessMixin(
             ✔ Event должен находиться в контексте цикла событий текущего метода
             ✔ Метод использовать для сложных вычислений, не возращающих результат мгновенно
             ✔ Метод должен возвращать результат (полезная нагрузка) если не было сигнала event
-            ✔ Результат должен быть экземпляром схемы ProcessOutputData
+            ✔ Результат должен быть байтовым представлением экземпляра схемы ProcessOutputData
             ✔ Метод должен возвращать None если event сигнал произошел ( выход по is_set() )
             ✔ Переопределяется в наследниках без super (чтобы убрать заглушку)
         ------------------------------------------------------------------------------
@@ -117,14 +117,16 @@ class ProcessMixin(
         # функция заглушка с демонстрацией работы _on_process
         iterations = 10
         time_step = 0.2
-        print(f'process {request_id} stub: sleep {time_step * iterations} sec')
+        # print(f'process {request_id} stub: sleep {time_step * iterations} sec')
         for i in range(iterations):
             # во всех наследниках класса переопределяющих этот метод, ключевое прерывание по event
             if event.is_set():
                 return None
             await asyncio.sleep(time_step)
-        result = EngineIOSchemas.process_output_data(result=data)
-        return result
+        result = EngineIOSchemas.process_output_data(result=data).model_dump_json()
+        result_bytes = result.encode('utf-8') # результат в байтах
+
+        return result_bytes
 
     def stop_process(self, request_id: str):
         """
