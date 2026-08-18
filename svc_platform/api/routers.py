@@ -141,21 +141,20 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
             )
 
         async def producer(data):
-            data_send = StreamResponse(
-                type='result',
-                data=data,
-                request_id=request_id,
-                message='Ok',
-            ).model_dump()
-            data_send = json.dumps(data_send).encode('utf-8')  # чанк перевести в байты
-            await websocket.send_bytes(data_send)
+            if isinstance(data, bytes):
+                await websocket.send_bytes(data)
+            else:
+                await websocket.send_json(data)
 
         async def consumer():
             try:
                 while True:
                     # обработка входных данных (перевод из байтов)
                     data = await websocket.receive_bytes()
-                    data = json.loads(data.decode('utf-8'))
+                    try:
+                        data = json.loads(data.decode('utf-8'))  # попытка перевести данные в json
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass  # пробросить дальше, так как это голые байты
                     await input_queue.put(data)
             except WebSocketDisconnect:
                 await input_queue.put(None)  # соединение завершилось штатно, либо проблема на клиенте
@@ -179,8 +178,7 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 request_id=request_id,
                 error=str(err),
             ).model_dump()
-            data_send_err = json.dumps(data_send_err).encode('utf-8')  # чанк перевести в байты
-            await websocket.send_bytes(data_send_err)
+            await producer(data_send_err)
         finally:
             if websocket.client_state.name == 'CONNECTED':
                 await websocket.close()
