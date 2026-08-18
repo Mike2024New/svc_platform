@@ -72,7 +72,7 @@ class ApiTestStream(EngineTestSuite):
         task = consume_stream(url=url.streaming_ws, callback=callback, event=event, data=data)
         await task
         await asyncio.sleep(0.2)
-        assert request_id not in test_engine_factory._producer_stream_tasks_registry, f'Сервер не закрыл stream соединение после отключения клиента'
+        assert request_id not in test_engine_factory._stream_tasks_registry, f'Сервер не закрыл stream соединение после отключения клиента'
 
     async def test_stream_many_connections(self, test_engine_factory, test_server, engine_io_schemas, settings):
         """Проверка запуска нескольких стримингов, сервер держит нагрузку"""
@@ -86,7 +86,7 @@ class ApiTestStream(EngineTestSuite):
 
         data = engine_io_schemas.producer_streaming_input_data.model_dump_json()
         tasks = []
-        test_engine_factory._producer_stream_semaphore._value = 3
+        test_engine_factory._stream_semaphore._value = 3
         for _ in range(3):
             task = asyncio.create_task(
                 consume_stream(

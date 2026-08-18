@@ -5,14 +5,14 @@ from svc_platform.engine.exc import EngineExc
 # Миксины
 from svc_platform.engine.mixins import ExecuteMixin
 from svc_platform.engine.mixins import ProcessMixin
-from svc_platform.engine.mixins import ProducerStreamMixin
+from svc_platform.engine.mixins import StreamMixin
 # Типы
 from svc_platform.schemas import engine_types as e_types
 
 __all__ = ['Engine']
 
 
-class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
+class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
     def __init__(self, settings: e_types.BaseSettingsType, ):
         """
         :param settings: системные настройки приложения (settings.json)
@@ -26,7 +26,7 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
         # подключение модулей:
         ExecuteMixin.__init__(self, settings=settings)
         ProcessMixin.__init__(self, settings=settings)
-        ProducerStreamMixin.__init__(self, settings=settings)
+        StreamMixin.__init__(self, settings=settings)
 
     def _on_set_parameters(self):
         """логика записи параметров (например информация об используемом устройстве)"""
@@ -52,7 +52,7 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
             # 3. Сброс stop переменных (для stop_all_tasks) - задачи снова можно брать в работу
             self._execute_stop_all = False
             self._process_stop_all = False
-            self._producer_stream_stop_all = False
+            self._stream_stop_all = False
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
             raise EngineExc.StartError(err)
@@ -75,11 +75,11 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
             # сбросить все tasks подключенных миксинов.
             await self._process_stop_all_tasks()  # остановить все процессы
             await self.execute_stop_all_tasks()  # остановить все команды
-            await self._producer_stream_stop_all_tasks()  # остановить все стриминговые задачи
+            await self._stream_stop_all_tasks()  # остановить все стриминговые задачи
             # сбросить все реестры
             self._execute_tasks_registry = {}
             self._process_tasks_registry = {}
-            self._producer_stream_tasks_registry = {}
+            self._stream_tasks_registry = {}
 
             slots.slot2(self._settings.name, parameters=self.parameters)
         except Exception as err:
@@ -108,14 +108,16 @@ class Engine(ExecuteMixin, ProcessMixin, ProducerStreamMixin):
 
     # =============== STREAM =================
 
-    async def producer_stream(
+    async def stream(
             self, callback: Callable[[bytes], Awaitable[None]],
-            data: e_types.ProducerStreamInputDataType,
+            queue: asyncio.Queue[e_types.ProducerStreamInputDataType],
             request_id: str, *args, **kwargs
     ) -> None:
+
         if not self._running:  # разрешить метод если запущен движок
             slots.slot31(name=self._settings.name, request_id=request_id)
-        return await super().producer_stream(callback=callback, data=data, request_id=request_id, *args, **kwargs)
+            return None
+        return await super().stream(callback=callback, queue=queue, request_id=request_id, *args, **kwargs)
 
 
 if __name__ == '__main__':

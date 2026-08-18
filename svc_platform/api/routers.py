@@ -1,12 +1,11 @@
-import asyncio
-import uuid
+import asyncio, uuid, json
 from fastapi import APIRouter, status, Depends, HTTPException, WebSocket, Response
 from fastapi.responses import JSONResponse
 from starlette.websockets import WebSocketDisconnect
 from svc_platform.engine import Engine
 from svc_platform.slots_manager import slots
 from svc_platform.engine import EngineExc
-from svc_platform.schemas import EngineIOSchemas
+from svc_platform.schemas import EngineIOSchemas, StreamResponse
 
 
 def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas) -> list[APIRouter]:
@@ -128,95 +127,62 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
             raise
 
     # =============== STREAMING (/WS) ========================
-
-    from pydantic import BaseModel
-    from typing import Literal, Any
-
-    class StreamResponse(BaseModel):
-        type: Literal['error', 'result', 'end']
-        close: bool = False
-        message: str
-        request_id: str
-        error: str | None = None
-        chunk: Any | None = None
-
     @app_router.websocket('/ws')
-    async def streaming(websocket: WebSocket):
+    async def stream(websocket: WebSocket):
         await websocket.accept()
-        closed_by_client = False
-        request_id = str(uuid.uuid4())[:8]
+        input_queue = asyncio.Queue()
+        # обработка базовых ошибок из middleware (проверка что engine включен, и что есть свободные потоки)
+        middleware_state = websocket.scope.get("state", {})
+        request_id = middleware_state.get('request_id', str(uuid.uuid4())[:8])
+        if middleware_state.get('err', None) is not None:
+            middleware_message = middleware_state['err']
+            await websocket.send_bytes(
+                json.dumps(middleware_message).encode('utf-8')
+            )
 
-        try:
-            # если engine не включен, то отправить клиенту отказ
-            if not engine.parameters['running']:
-                await websocket.send_json(
-                    StreamResponse(
-                        type='error',
-                        error='engine not started',
-                        close=True,
-                        message='Не включен engine',
-                        request_id=request_id
-                    ).model_dump()
-                )
-                return
+        async def producer(data):
+            data_send = StreamResponse(
+                type='result',
+                data=data,
+                request_id=request_id,
+                message='Ok',
+            ).model_dump()
+            data_send = json.dumps(data_send).encode('utf-8')  # чанк перевести в байты
+            await websocket.send_bytes(data_send)
 
-            # получение входных данных от клиента (с валидацией)
+        async def consumer():
             try:
-                data = engine_io_schemas.producer_streaming_input_data(**await websocket.receive_json())
-            except ValueError:
-                await websocket.send_json(
-                    StreamResponse(
-                        type='error',
-                        close=True,
-                        error='no corrected input data',
-                        message='Не верные входные данные.',
-                        request_id=request_id,
-                    ).model_dump()
-                )
-                return
+                while True:
+                    # обработка входных данных (перевод из байтов)
+                    data = await websocket.receive_bytes()
+                    data = json.loads(data.decode('utf-8'))
+                    await input_queue.put(data)
+            except WebSocketDisconnect:
+                await input_queue.put(None)  # соединение завершилось штатно, либо проблема на клиенте
 
-            async def async_callback(chunk_in: bytes):
-                """обработка чанков (отправка клиенту)"""
-                nonlocal closed_by_client
-                try:
-                    if not closed_by_client:
-                        await websocket.send_bytes(chunk_in)
-                except WebSocketDisconnect:
-                    closed_by_client = True
-                    if stream_started:  # закрыть стриминг если он был открыт
-                        engine.stop_producer_stream(request_id=request_id)
-
-            stream_started = True
-            await engine.producer_stream(callback=async_callback, data=data, request_id=request_id)
-            # сообщить клиенту что соединение закрыто
-            if not closed_by_client:
-                await websocket.send_json(
-                    StreamResponse(
-                        type='end',
-                        close=True,
-                        message='Стриминг завершен',
-                        request_id=request_id,
-                    ).model_dump()
-                )
-
+        consumer_task = asyncio.create_task(consumer())
+        stream_task = asyncio.create_task(
+            engine.stream(
+                callback=producer,
+                queue=input_queue,
+                request_id=request_id,
+            )
+        )
+        try:
+            await asyncio.gather(consumer_task, stream_task)
         except Exception as err:
-            if not closed_by_client:
-                try:
-                    await websocket.send_json(
-                        StreamResponse(
-                            type='error',
-                            error=str(err),
-                            close=True,
-                            message='Внутренняя ошибка сервера',
-                            request_id=request_id,
-                        ).model_dump()
-                    )
-                except Exception:  # noqa
-                    pass
-                try:
-                    engine.stop_producer_stream(request_id=request_id)
-                except EngineExc.StreamNoFindReqestId:
-                    pass
             slots.slot11(name=settings.name, err=err, request_id=request_id)
+            data_send_err = StreamResponse(
+                type='error',
+                close=True,
+                message="Ошибка на сервере, стриминг отменён.",
+                request_id=request_id,
+                error=str(err),
+            ).model_dump()
+            data_send_err = json.dumps(data_send_err).encode('utf-8')  # чанк перевести в байты
+            await websocket.send_bytes(data_send_err)
+        finally:
+            if websocket.client_state.name == 'CONNECTED':
+                await websocket.close()
 
     return [app_router]

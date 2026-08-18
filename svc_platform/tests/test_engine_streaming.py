@@ -52,7 +52,7 @@ class EngineTestProducerStreaming(EngineTestSuite):
             stream_queue = Queue()
             request_id = request_id_map[i] if request_id_map is not None else f'#00{i}'
             task = asyncio.create_task(
-                engine.producer_stream(
+                engine.stream(
                     data=engine_io_schemas.producer_streaming_input_data,
                     callback=self._stream_callback_factory(engine_io_schemas, stream_queue),
                     request_id=request_id,
@@ -67,7 +67,7 @@ class EngineTestProducerStreaming(EngineTestSuite):
             for i in range(len(stream_parameters.tasks_list)):
                 assert await self.wait_for_task_state(
                     request_id=stream_parameters.requests_id_list[i],
-                    registry=engine._producer_stream_tasks_registry,  # noqa
+                    registry=engine._stream_tasks_registry,  # noqa
                     target_state=True,
                 ), 'стриминг запущен не был'
 
@@ -104,10 +104,10 @@ class EngineTestProducerStreaming(EngineTestSuite):
             )
 
         # остановка стриминга
-        engine.stop_producer_stream(request_id=request_id)
+        engine.stop_stream(request_id=request_id)
         # ожидание что стриминг был остановлен
         assert await self.wait_for_task_state(
-            request_id=request_id, registry=engine._producer_stream_tasks_registry, target_state=False,
+            request_id=request_id, registry=engine._stream_tasks_registry, target_state=False,
         ), 'реестр задач не был очищен'
 
     async def test_producer_stream_double_request_id(self, test_engine_factory, engine_io_schemas, settings):
@@ -151,11 +151,11 @@ class EngineTestProducerStreaming(EngineTestSuite):
         ) is True, 'стрим не возвращает чанки'
 
         # прервать стриминг
-        engine.stop_producer_stream(request_id=request_id)
+        engine.stop_stream(request_id=request_id)
 
         # ожидание что стриминг был остановлен
         assert await self.wait_for_task_state(
-            request_id=request_id, registry=engine._producer_stream_tasks_registry, target_state=False,
+            request_id=request_id, registry=engine._stream_tasks_registry, target_state=False,
         ), 'реестр не был очищен'
 
     async def test_producer_stream_stop_no_request_id(self, test_engine_factory, engine_io_schemas):
@@ -179,8 +179,8 @@ class EngineTestProducerStreaming(EngineTestSuite):
 
         # должно выброситься исключение StreamNoFindReqestId
         with pytest.raises(EngineExc.StreamNoFindReqestId):
-            engine.stop_producer_stream(request_id='#_no_correct_request_id_#')  # левый request_id
-        assert request_id in engine._producer_stream_tasks_registry, 'стрим был прерван по неверному request_id'
+            engine.stop_stream(request_id='#_no_correct_request_id_#')  # левый request_id
+        assert request_id in engine._stream_tasks_registry, 'стрим был прерван по неверному request_id'
 
     #
 
@@ -210,7 +210,7 @@ class EngineTestProducerStreaming(EngineTestSuite):
         # дождаться запуска 1 стрима
         assert await self.wait_for_task_state(
             request_id=first_task_request_id,
-            registry=engine._producer_stream_tasks_registry,
+            registry=engine._stream_tasks_registry,
             target_state=True,
         )
         # ожидание первого чанка (проверка что стриминг отдаёт результаты)
@@ -218,15 +218,15 @@ class EngineTestProducerStreaming(EngineTestSuite):
             stream_queue=first_task_queue,
         ) is True, 'стрим не возвращает чанки'
         # второй стрим не должен был появиться в реестре, так как ещё не запущен (лимит 1)
-        assert second_task_request_id not in engine._producer_stream_tasks_registry
+        assert second_task_request_id not in engine._stream_tasks_registry
         # ожидание завершения 1 стрима
         await first_task
         # первый стрим должен быть удален из реестра так как выполнен
-        assert first_task_request_id not in engine._producer_stream_tasks_registry
+        assert first_task_request_id not in engine._stream_tasks_registry
         # ожидание запуска 2 стрима
         assert await self.wait_for_task_state(
             request_id=second_task_request_id,
-            registry=engine._producer_stream_tasks_registry,
+            registry=engine._stream_tasks_registry,
             target_state=True,
         )
         # второй стрим запустился и выдает 1 чанк
@@ -254,5 +254,5 @@ class EngineTestProducerStreaming(EngineTestSuite):
         # резкая остановка движка
         await engine.stop()
         # проверка что все переменные сброшены
-        assert engine._producer_stream_tasks_registry == {}, 'задачи не были удалены из реестра'
-        assert engine._producer_stream_stop_all is True, 'Флаг остановки всех задач не был установлен'
+        assert engine._stream_tasks_registry == {}, 'задачи не были удалены из реестра'
+        assert engine._stream_stop_all is True, 'Флаг остановки всех задач не был установлен'

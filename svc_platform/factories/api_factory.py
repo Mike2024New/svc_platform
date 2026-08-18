@@ -57,5 +57,5 @@ def api_factory(
         callback_start=lambda data: slots.slot13(name=settings.name, data=data),  # логирование запуска
         callback_end=None,
         exception_handlers_class=ExceptionHandlers,  # системный обработчик исключений
-        middlewares_list=system_middlewares_factory(engine=engine),  # промежуточные слои для http запросов (до/после)
+        middlewares_list=system_middlewares_factory(engine=engine, settings=settings),  # промежуточные слои для http
     )

@@ -1,6 +1,9 @@
+import uuid
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from svc_platform.engine import Engine
+from svc_platform.schemas import SettingsSchemaType
 
 """
 Промежуточный слой
@@ -10,13 +13,13 @@ from typing import TypeVar
 T = TypeVar('T', bound=Engine)
 
 
-def system_middlewares_factory(engine: T) -> list[tuple[type(BaseHTTPMiddleware), dict]]:
+def system_middlewares_factory(engine: T, settings: SettingsSchemaType) -> list[tuple[type(BaseHTTPMiddleware), dict]]:
     """
     Фабрика системных промежуточных слоёв
+    :param settings:
     :param engine: связь с движком (на всякий случай)
-    :return:
     """
-    _ = engine
+    _ = engine, settings
 
     class SystemMiddleware(BaseHTTPMiddleware):
         def __init__(self, app):
@@ -31,7 +34,48 @@ def system_middlewares_factory(engine: T) -> list[tuple[type(BaseHTTPMiddleware)
             except Exception:
                 raise
 
+    from starlette.types import Receive, Scope, Send
+
+    class WebsocketValidationMiddleware(BaseHTTPMiddleware):
+        def __init__(self, app):
+            super().__init__(app)
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send):
+            # Проверка что это websocket запрос
+            # логика до стрима
+            if scope["type"] == "websocket":
+                request_id = str(uuid.uuid4())[:8]
+                err = None
+                if not engine.parameters['running']:
+                    err = {
+                        "type": "error",
+                        "error": "engine not started",
+                        "close": True,
+                        "message": "Не включен engine",
+                        "request_id": request_id
+                    }
+
+                elif settings.producer_stream_limit <= 1:
+                    if engine.stream_current_tasks() > 0:
+                        err = {
+                            "type": "error",
+                            "error": "stream limit exceeded",
+                            "close": True,
+                            "message": "Стриминг уже запущен (лимит 1)",
+                            "request_id": request_id
+                        }
+
+                scope["state"]["err"] = err
+                scope["state"]["request_id"] = request_id
+
+            # вернуть управление основному приложению FastAPI
+            await self.app(scope, receive, send)
+            # логика после стрима
+            if scope["type"] == "websocket":
+                pass
+
     middlewares_list = [
         (SystemMiddleware, {}),  # промежуточный слой + дополнительные параметры для __init__
+        (WebsocketValidationMiddleware, {}),  # промежуточный слой для обработки стимов
     ]
     return middlewares_list
