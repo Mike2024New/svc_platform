@@ -141,10 +141,13 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
             )
 
         async def producer(data):
-            if isinstance(data, bytes):
-                await websocket.send_bytes(data)
-            else:
-                await websocket.send_json(data)
+            try:
+                if isinstance(data, bytes):
+                    await websocket.send_bytes(data)
+                else:
+                    await websocket.send_json(data)
+            except (WebSocketDisconnect, RuntimeError):  # если клиент ещё не отключился
+                pass
 
         async def consumer():
             try:
@@ -178,7 +181,10 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                 request_id=request_id,
                 error=str(err),
             ).model_dump()
-            await producer(data_send_err)
+            try:
+                await producer(data_send_err)
+            except:  # noqa
+                pass
         finally:
             if websocket.client_state.name == 'CONNECTED':
                 await websocket.close()
