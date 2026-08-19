@@ -10,6 +10,7 @@ class Urls:
         self.shutdown = self._base_url + '/shutdown/'
         self.health = self._base_url + '/health/'
         self.pid = self._base_url + '/pid/'
+        self.docs = self._base_url + '/docs/'
         # engine start/stop
         self.start = self._base_url + '/start/'
         self.stop = self._base_url + '/stop/'
@@ -23,3 +24,5 @@ class Urls:
         self.execute_stop = self._base_url + '/execute_stop/'
         # Streaming
         self.streaming_ws = f'ws://{host}:{port}/ws'
+
+print(Urls(port=8000).docs)
