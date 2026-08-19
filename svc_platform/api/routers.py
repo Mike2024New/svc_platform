@@ -161,7 +161,6 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
                     await input_queue.put(data)
             except WebSocketDisconnect:
                 await input_queue.put(None)  # соединение завершилось штатно, либо проблема на клиенте
-                engine.stop_stream(request_id=request_id)  # остановить движок
 
         consumer_task = asyncio.create_task(consumer())
         stream_task = asyncio.create_task(
@@ -174,9 +173,9 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         try:
             await asyncio.gather(consumer_task, stream_task)
         except asyncio.CancelledError:
-            engine.stop_stream(request_id=request_id)  # остановить движок
+            pass  # клиент отключился планово
         except Exception as err:
-            engine.stop_stream(request_id=request_id)  # остановить движок
+
             slots.slot11(name=settings.name, err=err, request_id=request_id)
             data_send_err = StreamResponse(
                 type='error',
@@ -192,5 +191,9 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
         finally:
             if websocket.client_state.name == 'CONNECTED':
                 await websocket.close()
+            try:
+                engine.stop_stream(request_id=request_id)  # остановить стрим
+            except EngineExc.StreamNoFindReqestId:
+                pass
 
     return [app_router]

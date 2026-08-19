@@ -9,6 +9,7 @@ class Urls:
         # system
         self.shutdown = self._base_url + '/shutdown/'
         self.health = self._base_url + '/health/'
+        self.pid = self._base_url + '/pid/'
         # engine start/stop
         self.start = self._base_url + '/start/'
         self.stop = self._base_url + '/stop/'
