@@ -1,10 +1,11 @@
 from pydantic import BaseModel, Field
 from typing import TypeVar
+from infrastructure_path_utils import get_root_dir_path
 
 
 # расширяемая модель настроек
 class BaseSettings(BaseModel):
-    name: str = 'unnamed'
+    name: str = get_root_dir_path().parts[-1]
     # настройки команд
     execute_limit: int = Field(default=3, description='Максимальное колличество команд выполняемых одновременно')
     execute_cancel_all_timeout: float = Field(default=10.0, description='Время на завершение команд если остановка')

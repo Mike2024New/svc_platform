@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.68.0"
+version = "0.69.0"
 description = "Платформа для запуска сервисов, `svc_` стандарт (репозитории Mike2024New которые содержат `svc_`"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -31,7 +31,7 @@ pythonpath = [
 ]
 
 [tool.uv.sources]
-infrastructure2 = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = ".", rev = "0aaccf5dc35bf0dbdb48081ddd0a226a28252319" }
+infrastructure2 = { git = "https://github.com/mike2024new/infrastructure2.git", subdirectory = ".", rev = "9c95a199bd1188e115bf17208d4ec8beada8f579" }
 
 [dependency-groups]
 dev = [
