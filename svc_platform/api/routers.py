@@ -12,8 +12,8 @@ def routers_factory(
         engine: Engine,
         settings,
         engine_io_schemas: EngineIOSchemas,
-        include_start_router : bool = True,
-        include_end_router : bool = True,
+        include_start_router: bool = True,
+        include_end_router: bool = True,
 ) -> list[APIRouter]:
     app_router = APIRouter(tags=[settings.name])
 
@@ -156,7 +156,7 @@ def routers_factory(
                 else:
                     await websocket.send_json(data)
             except (WebSocketDisconnect, RuntimeError):  # если клиент ещё не отключился
-                pass
+                pass  # просто выход так как клиент штатно отключился
 
         async def consumer():
             try:
@@ -169,7 +169,7 @@ def routers_factory(
                         pass  # пробросить дальше, так как это голые байты
                     await input_queue.put(data)
             except WebSocketDisconnect:
-                await input_queue.put(None)  # соединение завершилось штатно, либо проблема на клиенте
+                raise  # обязательно выброс исключения, чтобы вызвать в endpoint stop_stream (в finally)
 
         consumer_task = asyncio.create_task(consumer())
         stream_task = asyncio.create_task(
