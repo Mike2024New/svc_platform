@@ -18,7 +18,7 @@ def server_factory(
     :return:
     """
     routers_list = routers_list or []
-    routers_list = api_modul.routers_list + routers_list
+    routers_list = routers_list + api_modul.routers_list
     server = server_factory_v2(
         app_name=settings.name,
         # включение системных API:
