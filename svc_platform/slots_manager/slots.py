@@ -295,7 +295,7 @@ def slot24(name: str, request_id: str, end_time: float, *args, **kwargs):
     return Parameters(
         level='info',
         subcomponent=name,
-        message=f'[ {name}.STREAMING ] `{request_id}` отменен (task.cancel)',
+        message=f'[ {name}.STREAMING ] `{request_id}` остановлен',
         event=f'engine.streaming.canceled',
         request_id=request_id,
         data={'timedelta_sec': end_time},
