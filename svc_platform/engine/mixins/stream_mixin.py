@@ -69,7 +69,6 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
                 slots.slot24(name=self._settings.name, request_id=request_id, end_time=end_time)
             except Exception as err:
                 slots.slot7(name=self._settings.name, request_id=request_id, err=err)
-                self.stop_stream(request_id=request_id)  # отмена задачи
                 raise
             finally:
                 if self._stream_tasks_registry.get(request_id) is not None:
@@ -187,7 +186,7 @@ async def main():
     stream.stop_stream(request_id=request_id)
     event.set()
 
-    await  stream_task # если добавить это, то всё остановится
+    await  stream_task  # если добавить это, то всё остановится
     await producer_task
 
 
