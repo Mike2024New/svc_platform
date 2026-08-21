@@ -31,19 +31,25 @@ def api_factory(
         engine: Engine,
         settings: SettingsSchemaType,
         standart_api_schemas: EngineIOSchemas,
+        include_start_router: bool = True,
+        include_end_router: bool = True,
 ) -> ApiFactoryResult:
     """
     Сборщик всех фабрик генерирующих api приложения (при необходимости можно эти объекты переопределять в ApiFactoryResult)
     :param standart_api_schemas: Pydantic схемы для /process/, /execute/, /stream/
     :param settings: настройки приложения
     :param engine: компонент выполняющий полезную нагрузку
+    :param include_start_router: включать системный роутер start
+    :param include_end_router: включать системный роутер end
     :return: объект для запуска сервера -> ApiFactoryResult
     """
     try:
         routers_list = routers_factory(
             engine=engine,
             settings=settings,
-            engine_io_schemas=standart_api_schemas
+            engine_io_schemas=standart_api_schemas,
+            include_start_router=include_start_router,
+            include_end_router=include_end_router,
         )
         lifespan = lifespan_factory(engine=engine, settings=settings)
     except Exception as err:

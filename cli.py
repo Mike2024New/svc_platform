@@ -16,12 +16,29 @@ from svc_platform.factories.settings_manager_factory import settings_manager_fac
 from svc_platform.schemas import Settings, EngineIOSchemas
 
 # единая точка сборки приложения (созданные объекты можно переопределять как угодно)
+# получение настроек (из схемы Settings)
 settings, settings_manager = settings_manager_factory(settings_model=Settings(), reset_json=True)
+# получение шины сообщений
 message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
+# получение engine
 engine = engine_factory(engine_class=Engine, settings=settings)
-api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
-server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
-log_viewer = log_viewer_factory()
+# настройка api
+api_modul = api_factory(
+    engine=engine,
+    settings=settings,
+    standart_api_schemas=EngineIOSchemas(),
+    include_end_router=True,
+    include_start_router=True,
+)
+# настройка сервера
+server = server_factory(
+    settings=settings,
+    api_modul=api_modul,
+    middleware_err_enable=True,
+    routers_list=[]
+)
+
+# настройка логирования
 slots_init(
     enable=True,
     handlers_list=[handler_message_bus_log_factory(message_bus_add)],
@@ -42,7 +59,7 @@ cli_settings = CliSettings(
     # enable_run_command=True, # для интерактива
     enable_log_viewer=True,
 )
-
+# настройка сборки приложения (bin/exe)
 build_settings = BuildParameters(
     name=settings.name,
     entry_point_path=get_root_dir_path() / 'cli.py',  # заменить на cli.py
@@ -65,6 +82,6 @@ if __name__ == '__main__':
         settings_manager=settings_manager,
         build_settings=build_settings,
         trace_id_callback=lambda trace_id: message_bus_settings.set_trace_id(trace_id=trace_id),
-        log_viewer=log_viewer,
+        log_viewer=log_viewer_factory(),
     )
     app()

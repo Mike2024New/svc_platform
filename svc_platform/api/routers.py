@@ -8,7 +8,13 @@ from svc_platform.engine import EngineExc
 from svc_platform.schemas import EngineIOSchemas, StreamResponse
 
 
-def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas) -> list[APIRouter]:
+def routers_factory(
+        engine: Engine,
+        settings,
+        engine_io_schemas: EngineIOSchemas,
+        include_start_router : bool = True,
+        include_end_router : bool = True,
+) -> list[APIRouter]:
     app_router = APIRouter(tags=[settings.name])
 
     # =============== DEPENDENCIES ========================
@@ -31,27 +37,30 @@ def routers_factory(engine: Engine, settings, engine_io_schemas: EngineIOSchemas
 
     # =============== START ========================
 
-    @app_router.get('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
-    async def start() -> dict:
-        """Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
-        if engine.parameters['running']:
-            raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
-        try:
-            await engine.start()
-        except EngineExc.StartError:
-            raise
-        return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
+    if include_start_router:
+        @app_router.get('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
+        async def start() -> dict:
+            """Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
+            if engine.parameters['running']:
+                raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
+            try:
+                await engine.start()
+            except EngineExc.StartError:
+                raise
+            return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
 
     # =============== STOP ========================
 
-    @app_router.get('/stop/', summary='Остановка компонента', status_code=status.HTTP_200_OK)
-    async def stop(_is_running: bool = Depends(is_component_running)) -> dict:
-        """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
-        try:
-            await engine.stop()
-            return {'message': f'Компонент `{settings.name}` остановлен.', 'parameters': engine.parameters, }
-        except EngineExc.StopError:
-            raise
+    if include_end_router:
+
+        @app_router.get('/stop/', summary='Остановка компонента', status_code=status.HTTP_200_OK)
+        async def stop(_is_running: bool = Depends(is_component_running)) -> dict:
+            """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
+            try:
+                await engine.stop()
+                return {'message': f'Компонент `{settings.name}` остановлен.', 'parameters': engine.parameters, }
+            except EngineExc.StopError:
+                raise
 
     # =============== PROCESS ========================
 
