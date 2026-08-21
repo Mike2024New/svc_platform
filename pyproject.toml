@@ -1,6 +1,6 @@
 [project]
 name = "svc_platform"
-version = "0.76.0"
+version = "0.77.0"
 description = "Платформа для запуска сервисов, `svc_` стандарт (репозитории Mike2024New которые содержат `svc_`"
 readme = "README.md"
 requires-python = ">=3.12"

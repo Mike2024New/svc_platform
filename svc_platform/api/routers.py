@@ -6,6 +6,8 @@ from svc_platform.engine import Engine
 from svc_platform.slots_manager import slots
 from svc_platform.engine import EngineExc
 from svc_platform.schemas import EngineIOSchemas, StreamResponse
+from pydantic import BaseModel
+from typing import Any
 
 
 def routers_factory(
@@ -36,11 +38,27 @@ def routers_factory(
         return {'message': f'Параметры engine {settings.name}', 'parameters': engine.parameters}
 
     # =============== START ========================
+    class StartParameters(BaseModel):
+        data: dict[str, Any]
 
     if include_start_router:
+        # ⚠️ нужно будет убрать дублирование
+
+        @app_router.post('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
+        async def start(start_parameters: StartParameters | None = None) -> dict:
+            """Запуск движка компонента, позволяет персонально для него передать параметры (для того чтобы работали /process/, /execute/, /stream/)"""
+            if engine.parameters['running']:
+                raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
+            try:
+                await engine.start(start_parameters)
+            except EngineExc.StartError:
+                raise
+            return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
+
+        # для совместимости с уже существующими компонентами которые используют get запросы
         @app_router.get('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
         async def start() -> dict:
-            """Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
+            """⚠️ Устаревший метод в новых версиях лучше использовать post. Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
             if engine.parameters['running']:
                 raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
             try:
