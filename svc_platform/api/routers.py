@@ -181,7 +181,7 @@ def routers_factory(
         )
         try:
             await asyncio.gather(consumer_task, stream_task)
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, WebSocketDisconnect):
             pass  # клиент отключился планово
         except Exception as err:
 
