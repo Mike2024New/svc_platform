@@ -46,16 +46,18 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
             # создание и запуск задачи
             event = asyncio.Event()
             try:
+                task = asyncio.create_task(
+                    self._on_stream(
+                        queue=queue,
+                        callback=callback,
+                        event=event,
+                        request_id=request_id,
+                    )
+                )
+
                 self._stream_tasks_registry[request_id] = StreamTask(
                     event=event,
-                    task=asyncio.create_task(
-                        self._on_stream(
-                            queue=queue,
-                            callback=callback,
-                            event=event,
-                            request_id=request_id,
-                        )
-                    )
+                    task=task,
                 )
                 slots.slot8(name=self._settings.name, request_id=request_id)
                 await self._stream_tasks_registry[request_id].task
@@ -67,6 +69,7 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
                 slots.slot24(name=self._settings.name, request_id=request_id, end_time=end_time)
             except Exception as err:
                 slots.slot7(name=self._settings.name, request_id=request_id, err=err)
+                self.stop_stream(request_id=request_id)  # отмена задачи
                 raise
             finally:
                 if self._stream_tasks_registry.get(request_id) is not None:
@@ -106,6 +109,7 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
         # временная заглушка, имитирующая полезную нагрузку (возвращает тот же ответ)
         i = 0
         while not event.is_set():
+            print(123)
             data = await queue.get()
             if i == 10:
                 print(i / 0)
@@ -169,7 +173,7 @@ async def main():
             await asyncio.sleep(0.2)
             i += 1
 
-    asyncio.create_task(
+    stream_task = asyncio.create_task(
         stream.stream(
             callback=callback,
             queue=queue,
@@ -178,11 +182,12 @@ async def main():
     )
     producer_task = asyncio.create_task(producer())
 
-    # await asyncio.sleep(2)
+    await asyncio.sleep(1)
     #
-    # stream.stop_stream(request_id=request_id)
-    # event.set()
+    stream.stop_stream(request_id=request_id)
+    event.set()
 
+    await  stream_task # если добавить это, то всё остановится
     await producer_task
 
 
