@@ -49,7 +49,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка, что process появляется в реестре и удаляется после потребления результата."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -71,7 +71,7 @@ class EngineTestProcess(EngineTestSuite):
             return  # нет смысла в тесте, так как одновременно разрешено не более одного процесса
         settings.process_limit = 2  # запуск двух задач одновременно
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -90,7 +90,7 @@ class EngineTestProcess(EngineTestSuite):
         """
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -112,7 +112,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка, что остановка process по несуществующему request_id вызывает исключение ProcessNoFindReqestId."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -128,7 +128,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка, что результат process соответствует схеме process_output_data."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -157,7 +157,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка, что запрос результата process до завершения вызывает исключение ProcessResultNotCompleted."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -175,7 +175,7 @@ class EngineTestProcess(EngineTestSuite):
         settings.process_cleanup_enable = True
         settings.process_cleanup_result_ttl = 0.2
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -201,7 +201,7 @@ class EngineTestProcess(EngineTestSuite):
         tasks_count = 2  # всего 2 задачи
         settings.process_limit = 1  # ограничение семафора в 1 задачу
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         process_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -224,7 +224,7 @@ class EngineTestProcess(EngineTestSuite):
         """Проверка, что process_stop_all останавливает все задачи и устанавливает флаг остановки."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,

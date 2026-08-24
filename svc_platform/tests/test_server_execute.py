@@ -8,7 +8,7 @@ class ApiTestExecute(EngineTestSuite):
         """Проверка что execute запускается и возвращает request_id"""
         _ = self
         url = test_server
-        requests.get(url=url.start, timeout=10)  # запуск engine
+        requests.post(url=url.start, timeout=10, json=engine_io_schemas.engine_parameters.model_dump()) # запуск engine
         # проверка что execute запущен
         res = requests.post(
             url=url.execute,
@@ -24,7 +24,7 @@ class ApiTestExecute(EngineTestSuite):
         """Проверка что execute можно прервать по request_id"""
         _ = self
         url = test_server
-        requests.get(url=url.start, timeout=10)  # запуск engine
+        requests.post(url=url.start, timeout=10, json=engine_io_schemas.engine_parameters.model_dump()) # запуск engine
         # проверка что execute запущен
         res = requests.post(
             url=url.execute,
@@ -41,7 +41,7 @@ class ApiTestExecute(EngineTestSuite):
         """Базовый асинхронный тест с несколькими запросами, проверка что request_id не дублируются в engine"""
         _ = self
         url = test_server
-        requests.get(url=url.start, timeout=10)  # запуск engine
+        requests.post(url=url.start, timeout=10, json=engine_io_schemas.engine_parameters.model_dump()) # запуск engine
 
         async def fetch_data(session_in, json_data):
             async with session_in.post(url.execute, json=json_data) as response:

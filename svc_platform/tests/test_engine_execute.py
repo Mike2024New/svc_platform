@@ -48,7 +48,7 @@ class EngineTestExecute(EngineTestSuite):
         """Проверка, что execute появляется в реестре и удаляется после завершения."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         # запуск задачи
         execute_parameters = await self.__run_tasks(
             engine=engine,
@@ -71,7 +71,7 @@ class EngineTestExecute(EngineTestSuite):
 
         settings.execute_limit = 2  # запуск двух задач параллельно
         engine = test_engine_factory(settings_override=settings)
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         # запуск задачи
         execute_parameters = await self.__run_tasks(
             engine=engine,
@@ -89,7 +89,7 @@ class EngineTestExecute(EngineTestSuite):
         """Проверка, что execute останавливается по request_id и удаляется из реестра."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         # запуск задачи
         execute_parameters = await self.__run_tasks(
             engine=engine,
@@ -108,7 +108,7 @@ class EngineTestExecute(EngineTestSuite):
         """Проверка, что остановка execute по несуществующему request_id вызывает исключение ExecuteNoFindReqestId."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         # запуск задачи
         await self.__run_tasks(
             engine=engine,
@@ -127,7 +127,7 @@ class EngineTestExecute(EngineTestSuite):
         tasks_count = 2  # всего 2 задачи
         settings.execute_limit = 1  # ограничение семафора в 1 задачу
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         execute_parameters = await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,
@@ -150,7 +150,7 @@ class EngineTestExecute(EngineTestSuite):
         """Проверка, что execute_stop_all останавливает все задачи и устанавливает флаг остановки."""
         _ = self
         engine = test_engine_factory()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         await self.__run_tasks(
             engine=engine,
             engine_io_schemas=engine_io_schemas,

@@ -21,6 +21,5 @@ class TestsEngine(
     ApiTestExecute,
     ApiTestProcess,
     ApiTestStream,  # пока что пуст, будет расширен и автоматически применится в дочерних проектах
-
 ):
     pass

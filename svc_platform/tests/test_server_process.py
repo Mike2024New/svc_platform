@@ -8,7 +8,7 @@ class ApiTestProcess(EngineTestSuite):
         """Проверка цепочки process, отправка запроса, получение ответа, проверка что ответ соответствует модели"""
         _ = self
         url = test_server
-        requests.get(url=url.start, timeout=10)  # запуск engine
+        requests.post(url=url.start, timeout=10, json=engine_io_schemas.engine_parameters.model_dump()) # запуск engine
         # проверка что execute запущен
         res = requests.post(
             url=url.process,
