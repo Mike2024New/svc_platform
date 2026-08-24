@@ -1,5 +1,6 @@
 from typing import Any
 from pydantic import BaseModel, ConfigDict
+from svc_platform.schemas.settings_schemas import Parameters
 
 __all__ = ['EngineIOSchemas']
 
@@ -32,6 +33,7 @@ class ProducerStreamingOutputData(EngineIOBase):
 
 # сборка I/O моделей для типизации engine и standart_api_routers(/process/, /execute/, /streaming/)
 class EngineIOSchemas:
+    parameters = Parameters  # передача параметров engine
     process_input_data = ProcessInputData
     execute_input_data = ExecuteInputData
     process_output_data = ProcessOutputData

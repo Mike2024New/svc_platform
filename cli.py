@@ -23,12 +23,10 @@ message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 # получение engine
 engine = engine_factory(engine_class=Engine, settings=settings)
 
-from svc_platform.api.routers import RoutersFactory
-from svc_platform.schemas import engine_types
+from svc_platform.api.routers import routers_factory
 
 # подключение стандартных системных роутеров
-routers_factory = RoutersFactory(parameters_type=engine_types.ParametersType)
-standard_routers_list = routers_factory.create(
+standard_routers_list = routers_factory(
     engine=engine,
     settings=settings,
     engine_io_schemas=EngineIOSchemas(),
