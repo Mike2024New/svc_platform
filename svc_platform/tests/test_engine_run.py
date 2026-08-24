@@ -7,7 +7,7 @@ class EngineTestRun(EngineTestSuite):
         _ = self
         engine = test_engine_factory(settings_override=settings)
         assert engine.get_parameters().get('running') == False
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
         assert engine.get_parameters().get('running') == True
         await engine.stop()
 
@@ -16,7 +16,7 @@ class EngineTestRun(EngineTestSuite):
         _ = self
         engine = test_engine_factory(settings_override=settings)
         assert engine.get_parameters().get('running') == False
-        await engine.start()
-        await engine.start()
+        await engine.start(engine_io_schemas.engine_parameters)
+        await engine.start(engine_io_schemas.engine_parameters)
         assert engine.get_parameters().get('running') == True
         await engine.stop()

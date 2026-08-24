@@ -13,8 +13,9 @@ from svc_platform.factories import engine_factory
 
 
 @dataclass
-class Parameters:
+class TestParameters:
     """Предопределенные параметры для тестов (engine_io_schemas)"""
+    engine_parameters: EngineIOSchemas.parameters
     process_input_data: EngineIOSchemas.process_input_data
     process_output_data: EngineIOSchemas.process_output_data
     execute_input_data: EngineIOSchemas.execute_input_data
@@ -29,7 +30,9 @@ class EngineTestSuite:
     @pytest.fixture
     def engine_io_schemas(self):
         """Схема input/output/stream движка, важно в дочерних проектах переопределять эти схемы с параметрами"""
-        return Parameters(
+        parameters = EngineIOSchemas.parameters()
+        return TestParameters(
+            engine_parameters=parameters,
             process_input_data=EngineIOSchemas.process_input_data(text='stub'),
             process_output_data=EngineIOSchemas.process_output_data(result='stub'),
             execute_input_data=EngineIOSchemas.execute_input_data(text='stub'),
