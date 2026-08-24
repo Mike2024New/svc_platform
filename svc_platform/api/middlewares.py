@@ -48,7 +48,7 @@ def system_middlewares_factory(
             if scope["type"] == "websocket":
                 request_id = str(uuid.uuid4())[:8]
                 err = None
-                if not engine.parameters['running']:
+                if not engine.get_parameters().get('running', None):
                     err = {
                         "type": "error",
                         "error": "engine not started",
