@@ -1,7 +1,8 @@
 from infrastructure_cli_utils import CliSettings
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_builder import BuildParameters
-from svc_platform.factories import cli_factory, server_factory, api_factory, engine_factory, log_viewer_factory
+from svc_platform.factories import cli_factory, server_factory, api_factory, engine_factory, log_viewer_factory, \
+    routers_factory
 from svc_platform.engine import Engine
 from svc_platform.slots_manager import slots_init
 from svc_platform.slots_manager.handlers import handler_message_bus_log_factory
@@ -22,8 +23,6 @@ settings, settings_manager = settings_manager_factory(settings_model=Settings(),
 message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 # получение engine
 engine = engine_factory(engine_class=Engine, settings=settings)
-
-from svc_platform.api.routers import routers_factory
 
 # подключение стандартных системных роутеров
 standard_routers_list = routers_factory(
