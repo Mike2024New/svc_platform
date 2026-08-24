@@ -3,9 +3,8 @@ from fastapi import APIRouter
 from svc_platform.slots_manager import slots
 from dataclasses import dataclass
 from typing import Callable
-from svc_platform.api import routers_factory, lifespan_factory, system_middlewares_factory
+from svc_platform.api import lifespan_factory, system_middlewares_factory
 from svc_platform.engine import Engine
-from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.exception_handlers import ExceptionHandlers
 from svc_platform.schemas import engine_types as e_types
 
@@ -30,27 +29,17 @@ class ApiFactoryResult:
 def api_factory(
         engine: Engine,
         settings: e_types.SettingsType,
-        standart_api_schemas: EngineIOSchemas,
-        include_start_router: bool = True,
-        include_end_router: bool = True,
+        standard_routers_list: list[APIRouter] | None = None,
 ) -> ApiFactoryResult:
     """
     Сборщик всех фабрик генерирующих api приложения (при необходимости можно эти объекты переопределять в ApiFactoryResult)
-    :param standart_api_schemas: Pydantic схемы для /process/, /execute/, /stream/
+    :param standard_routers_list: стандратные api из модуля routers_factory
     :param settings: настройки приложения
     :param engine: компонент выполняющий полезную нагрузку
-    :param include_start_router: включать системный роутер start
-    :param include_end_router: включать системный роутер end
     :return: объект для запуска сервера -> ApiFactoryResult
     """
     try:
-        routers_list = routers_factory(
-            engine=engine,
-            settings=settings,
-            engine_io_schemas=standart_api_schemas,
-            include_start_router=include_start_router,
-            include_end_router=include_end_router,
-        )
+        routers_list = standard_routers_list or []
         lifespan = lifespan_factory(engine=engine, settings=settings)
     except Exception as err:
         raise RuntimeError(f'Ошибка сборки api: {err}')

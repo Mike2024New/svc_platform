@@ -22,13 +22,25 @@ settings, settings_manager = settings_manager_factory(settings_model=Settings(),
 message_bus_add, message_bus_settings = message_bus_factory(settings=settings)
 # получение engine
 engine = engine_factory(engine_class=Engine, settings=settings)
+
+from svc_platform.api.routers import RoutersFactory
+from svc_platform.schemas import engine_types
+
+# подключение стандартных системных роутеров
+routers_factory = RoutersFactory(parameters_type=engine_types.ParametersType)
+standard_routers_list = routers_factory.create(
+    engine=engine,
+    settings=settings,
+    engine_io_schemas=EngineIOSchemas(),
+    include_start_router=True,
+    include_end_router=True,
+)
+
 # настройка api
 api_modul = api_factory(
     engine=engine,
     settings=settings,
-    standart_api_schemas=EngineIOSchemas(),
-    include_end_router=True,
-    include_start_router=True,
+    standard_routers_list=standard_routers_list,
 )
 # настройка сервера
 server = server_factory(
