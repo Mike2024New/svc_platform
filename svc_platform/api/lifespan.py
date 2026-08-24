@@ -3,13 +3,10 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from typing import Callable
 from svc_platform.slots_manager import slots
-from svc_platform.schemas import BaseSettings
-from typing import TypeVar
-
-T = TypeVar('T', bound=BaseSettings)
+from svc_platform.schemas import engine_types as e_types
 
 
-def lifespan_factory(engine: Engine, settings: T) -> Callable:
+def lifespan_factory(engine: Engine, settings: e_types.SettingsType) -> Callable:
     _ = settings
 
     @asynccontextmanager

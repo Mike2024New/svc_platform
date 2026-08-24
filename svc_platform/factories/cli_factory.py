@@ -2,7 +2,7 @@ import sys
 from infrastructure_cli_utils import CliSettings, get_cli_app
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_builder import BuildParameters
-from svc_platform.schemas import SettingsSchemaType
+from svc_platform.schemas import engine_types as e_types
 from infrastructure_message_bus import LogViewer
 
 
@@ -10,7 +10,7 @@ def cli_factory(
         cli_settings: CliSettings,
         build_settings: BuildParameters = None,
         server=None,
-        settings: SettingsSchemaType = None, settings_manager=None,
+        settings: e_types.SettingsType = None, settings_manager=None,
         log_viewer: LogViewer = None,
         trace_id_callback=None,
 ):

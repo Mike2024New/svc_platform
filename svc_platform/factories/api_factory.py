@@ -7,7 +7,7 @@ from svc_platform.api import routers_factory, lifespan_factory, system_middlewar
 from svc_platform.engine import Engine
 from svc_platform.schemas import EngineIOSchemas
 from svc_platform.api.exception_handlers import ExceptionHandlers
-from svc_platform.schemas import SettingsSchemaType
+from svc_platform.schemas import engine_types as e_types
 
 """
 Сборщик стандартного api ( /start/, /stop/, /process/, /execute/, /stream/ )
@@ -29,7 +29,7 @@ class ApiFactoryResult:
 
 def api_factory(
         engine: Engine,
-        settings: SettingsSchemaType,
+        settings: e_types.SettingsType,
         standart_api_schemas: EngineIOSchemas,
         include_start_router: bool = True,
         include_end_router: bool = True,

@@ -3,7 +3,7 @@ from time import perf_counter
 from typing import Generic
 from svc_platform.slots_manager import slots
 from svc_platform.engine.exc import EngineExc
-from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
+from svc_platform.schemas import EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import ProcessTask
 from svc_platform.schemas import engine_types as e_types
@@ -15,7 +15,7 @@ class ProcessMixin(
         e_types.ProcessOutputDataType,
     ]
 ):
-    def __init__(self, settings: SettingsSchemaType):
+    def __init__(self, settings: e_types.SettingsType):
         self._settings = settings
         self._process_tasks_registry: dict[str, ProcessTask] = {}
         self._process_semaphore = asyncio.Semaphore(self._settings.process_limit)
@@ -113,7 +113,7 @@ class ProcessMixin(
         возвращает те же входные данные что и получил
         (Заглушка! В наследниках полностью переопределить метод, (без super) )
         """
-        _ = self, args, kwargs, data
+        _ = self, args, kwargs, data, request_id
         # функция заглушка с демонстрацией работы _on_process
         iterations = 10
         time_step = 0.2
@@ -124,7 +124,7 @@ class ProcessMixin(
                 return None
             await asyncio.sleep(time_step)
         result = EngineIOSchemas.process_output_data(result=data).model_dump_json()
-        result_bytes = result.encode('utf-8') # результат в байтах
+        result_bytes = result.encode('utf-8')  # результат в байтах
 
         return result_bytes
 
@@ -213,11 +213,11 @@ class ProcessMixin(
 
 # пример использования
 async def main():
-    from svc_platform.schemas import BaseSettings
+    from svc_platform.schemas import Settings
     from svc_platform.slots_manager import slots_init, handler_print_message_factory
     slots_init(handlers_list=[handler_print_message_factory()], enable=False)
     request_id = '#001'
-    mixin = ProcessMixin(settings=BaseSettings())
+    mixin = ProcessMixin(settings=Settings())
     await mixin.process(data=EngineIOSchemas.process_input_data(), request_id=request_id)
     print(mixin.get_process_result(request_id=request_id))
 

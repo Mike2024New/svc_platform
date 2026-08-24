@@ -18,8 +18,8 @@ class Parameters:
     process_input_data: EngineIOSchemas.process_input_data
     process_output_data: EngineIOSchemas.process_output_data
     execute_input_data: EngineIOSchemas.execute_input_data
-    producer_streaming_input_data: EngineIOSchemas.producer_streaming_input_data
-    producer_streaming_output_data: EngineIOSchemas.producer_streaming_output_data
+    streaming_input_data: EngineIOSchemas.streaming_input_data
+    streaming_output_data: EngineIOSchemas.streaming_output_data
     request_id: str = '#000'
 
 
@@ -33,8 +33,8 @@ class EngineTestSuite:
             process_input_data=EngineIOSchemas.process_input_data(text='stub'),
             process_output_data=EngineIOSchemas.process_output_data(result='stub'),
             execute_input_data=EngineIOSchemas.execute_input_data(text='stub'),
-            producer_streaming_input_data=EngineIOSchemas.producer_streaming_input_data(text='stub'),
-            producer_streaming_output_data=EngineIOSchemas.producer_streaming_output_data(text='stub'),
+            streaming_input_data=EngineIOSchemas.streaming_input_data(text='stub'),
+            streaming_output_data=EngineIOSchemas.streaming_output_data(text='stub'),
         )
 
     @pytest.fixture
@@ -43,7 +43,7 @@ class EngineTestSuite:
         settings_model = Settings(
             execute_limit=3,
             process_limit=3,
-            producer_stream_limit=3,
+            stream_limit=3,
         )
         return settings_model
 

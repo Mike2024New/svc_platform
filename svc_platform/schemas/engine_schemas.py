@@ -35,5 +35,5 @@ class EngineIOSchemas:
     process_input_data = ProcessInputData
     execute_input_data = ExecuteInputData
     process_output_data = ProcessOutputData
-    producer_streaming_input_data = ProducerStreamingInputData
-    producer_streaming_output_data = ProducerStreamingOutputData
+    streaming_input_data = ProducerStreamingInputData
+    streaming_output_data = ProducerStreamingOutputData

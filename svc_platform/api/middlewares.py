@@ -3,7 +3,7 @@ import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from svc_platform.engine import Engine
-from svc_platform.schemas import SettingsSchemaType
+from svc_platform.schemas import engine_types as e_types
 
 """
 Промежуточный слой
@@ -13,7 +13,9 @@ from typing import TypeVar
 T = TypeVar('T', bound=Engine)
 
 
-def system_middlewares_factory(engine: T, settings: SettingsSchemaType) -> list[tuple[type(BaseHTTPMiddleware), dict]]:
+def system_middlewares_factory(
+        engine: T, settings: e_types.SettingsType
+) -> list[tuple[type(BaseHTTPMiddleware), dict]]:
     """
     Фабрика системных промежуточных слоёв
     :param settings:
@@ -55,7 +57,7 @@ def system_middlewares_factory(engine: T, settings: SettingsSchemaType) -> list[
                         "request_id": request_id
                     }
 
-                elif settings.producer_stream_limit <= 1:
+                elif settings.stream_limit <= 1:
                     if engine.stream_current_tasks() > 0:
                         err = {
                             "type": "error",

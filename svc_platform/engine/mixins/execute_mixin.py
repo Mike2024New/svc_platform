@@ -2,7 +2,7 @@ import asyncio
 from time import perf_counter
 from typing import Generic
 from svc_platform.engine.exc import EngineExc
-from svc_platform.schemas import SettingsSchemaType, EngineIOSchemas
+from svc_platform.schemas import EngineIOSchemas
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import ExecuteTask
 from svc_platform.schemas import engine_types as e_types
@@ -10,7 +10,7 @@ from svc_platform.slots_manager import slots
 
 
 class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
-    def __init__(self, settings: SettingsSchemaType):
+    def __init__(self, settings: e_types.SettingsType):
         self._settings = settings
         self._execute_tasks_registry: dict[str, ExecuteTask] = {}
         self._execute_semaphore = asyncio.Semaphore(self._settings.execute_limit)
@@ -141,14 +141,14 @@ class ExecuteMixin(Generic[e_types.ExecuteInputDataType]):
 
 # пример использования
 async def main():
-    from svc_platform.schemas import BaseSettings
+    from svc_platform.schemas import Settings
     from svc_platform.slots_manager import slots_init
     from svc_platform.slots_manager.handlers import handler_print_message_factory
     from svc_platform.factories import settings_manager_factory
 
     request_id = '#001'
     request_id2 = '#002'
-    settings, settings_manager = settings_manager_factory(settings_model=BaseSettings(execute_limit=1), reset_json=True)
+    settings, settings_manager = settings_manager_factory(settings_model=Settings(execute_limit=1), reset_json=True)
     ex = ExecuteMixin(settings=settings)
 
     slots_init(enable=True, handlers_list=[handler_print_message_factory()])

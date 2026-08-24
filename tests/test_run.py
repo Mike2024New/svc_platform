@@ -1,7 +1,7 @@
 from svc_platform.tests.test_engine_run import EngineTestRun
 from svc_platform.tests.test_engine_execute import EngineTestExecute
 from svc_platform.tests.test_engine_process import EngineTestProcess
-from svc_platform.tests.test_engine_streaming import EngineTestProducerStreaming
+from svc_platform.tests.test_engine_streaming import EngineTestStreaming
 
 """
 запуск тестов, подключение и отключение тестов в классе TestEngine
@@ -10,8 +10,8 @@ from svc_platform.tests.test_engine_streaming import EngineTestProducerStreaming
 
 class TestsEngine(
     EngineTestRun,
-    EngineTestProcess,
     EngineTestExecute,
-    # EngineTestProducerStreaming,
+    EngineTestProcess,
+    # EngineTestStreaming,
 ):
     pass

@@ -5,14 +5,13 @@ from starlette.websockets import WebSocketDisconnect
 from svc_platform.engine import Engine
 from svc_platform.slots_manager import slots
 from svc_platform.engine import EngineExc
+from svc_platform.schemas import engine_types as e_types
 from svc_platform.schemas import EngineIOSchemas, StreamResponse
-from pydantic import BaseModel
-from typing import Any
 
 
 def routers_factory(
         engine: Engine,
-        settings,
+        settings: e_types.SettingsType,
         engine_io_schemas: EngineIOSchemas,
         include_start_router: bool = True,
         include_end_router: bool = True,
@@ -22,7 +21,8 @@ def routers_factory(
     # =============== DEPENDENCIES ========================
 
     def is_component_running() -> bool:
-        if not engine.parameters['running']:
+        running = engine.get_parameters()['running']
+        if not running:
             slots.slot12(name=settings.name)
             raise HTTPException(
                 detail=f'Компонент `{settings.name}` не запущен, запустите его через /start/.',
@@ -35,37 +35,36 @@ def routers_factory(
     @app_router.get('/parameters/', summary='Информация о параметрах компонента', status_code=status.HTTP_200_OK)
     async def parameters() -> dict:
         """Текущие параметры компонента"""
-        return {'message': f'Параметры engine {settings.name}', 'parameters': engine.parameters}
+        return {'message': f'Параметры engine {settings.name}', 'parameters': engine.get_parameters()}
 
     # =============== START ========================
-    class StartParameters(BaseModel):
-        data: dict[str, Any]
-
     if include_start_router:
         # ⚠️ нужно будет убрать дублирование
 
         @app_router.post('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
-        async def start(start_parameters: StartParameters | None = None) -> dict:
+        async def start(start_parameters: e_types.Parameters | None = None) -> dict:
             """Запуск движка компонента, позволяет персонально для него передать параметры (для того чтобы работали /process/, /execute/, /stream/)"""
-            if engine.parameters['running']:
+            running = engine.get_parameters()['running']
+            if running:
                 raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
             try:
                 await engine.start(start_parameters)
             except EngineExc.StartError:
                 raise
-            return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
+            return {'message': f'Компонент `{settings.name}` запущен.'}
 
         # для совместимости с уже существующими компонентами которые используют get запросы
         @app_router.get('/start/', summary='Запуск компонента', status_code=status.HTTP_200_OK)
         async def start() -> dict:
             """⚠️ Устаревший метод в новых версиях лучше использовать post. Запуск движка компонента (для того чтобы работали /process/, /execute/, /stream/)"""
-            if engine.parameters['running']:
+            running = engine.get_parameters()['running']
+            if running:
                 raise HTTPException(detail=f'Компонент `{settings.name}` уже был запущен ранее.', status_code=400)
             try:
                 await engine.start()
             except EngineExc.StartError:
                 raise
-            return {'message': f'Компонент `{settings.name}` запущен.', 'parameters': engine.parameters}
+            return {'message': f'Компонент `{settings.name}` запущен.'}
 
     # =============== STOP ========================
 
@@ -76,7 +75,7 @@ def routers_factory(
             """Остановка движка компонента (перестанут работать /process/, /execute/, /stream/)"""
             try:
                 await engine.stop()
-                return {'message': f'Компонент `{settings.name}` остановлен.', 'parameters': engine.parameters, }
+                return {'message': f'Компонент `{settings.name}` остановлен.'}
             except EngineExc.StopError:
                 raise
 

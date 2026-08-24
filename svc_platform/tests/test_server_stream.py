@@ -15,7 +15,7 @@ class ApiTestStream(EngineTestSuite):
                 assert key in response, f'В теле ответа api стриминга отсутствует ключ {key}'
 
         event = asyncio.Event()
-        data = engine_io_schemas.producer_streaming_input_data.model_dump_json()
+        data = engine_io_schemas.streaming_input_data.model_dump_json()
         task = consume_stream(url=url.streaming_ws, callback=callback, event=event, data=data)
         await task
 
@@ -46,7 +46,7 @@ class ApiTestStream(EngineTestSuite):
             assert response.get('error') is not None
 
         event = asyncio.Event()
-        data = engine_io_schemas.producer_streaming_input_data.model_dump_json()
+        data = engine_io_schemas.streaming_input_data.model_dump_json()
         task = consume_stream(url=url.streaming_ws, callback=callback, event=event, data=data)
         await task
 
@@ -68,7 +68,7 @@ class ApiTestStream(EngineTestSuite):
             if iterations == 3:
                 event.set()
 
-        data = engine_io_schemas.producer_streaming_input_data.model_dump_json()
+        data = engine_io_schemas.streaming_input_data.model_dump_json()
         task = consume_stream(url=url.streaming_ws, callback=callback, event=event, data=data)
         await task
         await asyncio.sleep(0.2)
@@ -84,7 +84,7 @@ class ApiTestStream(EngineTestSuite):
             _ = response
             print(response)
 
-        data = engine_io_schemas.producer_streaming_input_data.model_dump_json()
+        data = engine_io_schemas.streaming_input_data.model_dump_json()
         tasks = []
         test_engine_factory._stream_semaphore._value = 3
         for _ in range(3):

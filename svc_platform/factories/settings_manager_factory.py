@@ -3,16 +3,16 @@ from typing import Any
 from pathlib import Path
 from infrastructure_path_utils import get_root_dir_path
 from infrastructure_settings_manager import get_settings_manager
-from svc_platform.schemas import SettingsSchemaType
+from svc_platform.schemas import engine_types as e_types
 
 __all__ = ['settings_manager_factory']
 
 
 def settings_manager_factory(
-        settings_model: SettingsSchemaType,
+        settings_model: e_types.SettingsType,
         json_file_path: Path | None = None,
         reset_json: bool = False,
-) -> tuple[SettingsSchemaType, Any]:
+) -> tuple[e_types.SettingsType, Any]:
     """
     Возвращает объект с настройками settings, и управление настройками
     :param reset_json: перезаписать settings.json (для обновления моделей)?

@@ -1,4 +1,4 @@
-from svc_platform.schemas import EngineIOSchemas, BaseSettings
+from svc_platform.schemas import EngineIOSchemas, BaseSettings, Settings, Parameters
 from typing import TypeVar
 
 # =============== ДЖЕНЕРИКИ ТИПОВ ===============
@@ -15,10 +15,10 @@ from typing import TypeVar
 # Чтобы не забыть это всё и не мучиться с этим каждый раз, лучше сделать репозиторий копируемый шаблон где это всё сделано
 # ====================================================
 BaseSettingsType = TypeVar('BaseSettingsType', bound=BaseSettings)
+ParametersType = TypeVar('ParametersType', bound=Parameters)
+SettingsType = TypeVar('SettingsType', bound=Settings)
 ProcessInputDataType = TypeVar('ProcessInputDataType', bound=EngineIOSchemas.process_input_data)
 ProcessOutputDataType = TypeVar('ProcessOutputDataType', bound=EngineIOSchemas.process_output_data)
 ExecuteInputDataType = TypeVar('ExecuteInputDataType', bound=EngineIOSchemas.execute_input_data)
-ProducerStreamInputDataType = TypeVar('ProducerStreamInputDataType',
-                                      bound=EngineIOSchemas.producer_streaming_input_data)
-ProducerStreamOutputDataType = TypeVar('ProducerStreamOutputDataType',
-                                       bound=EngineIOSchemas.producer_streaming_output_data)
+StreamInputDataType = TypeVar('StreamInputDataType', bound=EngineIOSchemas.streaming_input_data)
+StreamOutputDataType = TypeVar('StreamOutputDataType', bound=EngineIOSchemas.streaming_output_data)

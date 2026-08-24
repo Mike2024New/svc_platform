@@ -1,11 +1,11 @@
 from infrastructure_server import server_factory_v2, ServerV2
 from fastapi import APIRouter
 from svc_platform.factories.api_factory import ApiFactoryResult
-from svc_platform.schemas import SettingsSchemaType
+from svc_platform.schemas import engine_types as e_types
 
 
 def server_factory(
-        settings: SettingsSchemaType,
+        settings: e_types.SettingsType,
         api_modul: ApiFactoryResult,
         routers_list: list[APIRouter] | None = None, middleware_err_enable: bool = True
 ) -> ServerV2:

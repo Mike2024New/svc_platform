@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 from svc_platform.slots_manager import slots
 from svc_platform.engine.exc import EngineExc
 # Миксины
@@ -13,14 +13,12 @@ __all__ = ['Engine']
 
 
 class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
-    def __init__(self, settings: e_types.BaseSettingsType, ):
+    def __init__(self, settings: e_types.Settings):
         """
         :param settings: системные настройки приложения (settings.json)
         """
         self._settings = settings
         self._running = False
-        self.parameters: dict[str, Any] = {'running': self._running, 'settings': self._settings.model_dump()}
-        self._on_set_parameters()
         self._stop_component = asyncio.Event()  # состояние Engine
 
         # подключение модулей:
@@ -28,27 +26,32 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
         ProcessMixin.__init__(self, settings=settings)
         StreamMixin.__init__(self, settings=settings)
 
-    def _on_set_parameters(self):
-        """логика записи параметров (например информация об используемом устройстве)"""
-        pass
+    def get_parameters(self):
+        return {
+            'running': self._running,
+            'settings': self._settings.parameters.model_dump(),
+        }
 
     # =============== START =================
 
-    async def start(self, *args, **kwargs) -> None:
+    async def start(
+            self, parameters: e_types.Parameters | None = None, *args, **kwargs
+    ) -> None:
         """Запуск движка, выполняет тяжелую логику запуска (например whisper или llm), метод идемпотентен."""
         _ = self, args, kwargs  # игнорировать variable unused
+        if parameters:
+            self._settings.parameters = parameters  # переопределение параметров по умолчанию
         if self._running:
             return
         self._stop_component.clear()
         self._running = True
-        self.parameters['running'] = True
         try:
             # 1. запуск Engine
             await self._on_start(*args, **kwargs)
             # 2. запуск цикла удаления устаревших результатов process
             if self._settings.process_cleanup_enable:
                 asyncio.create_task(self._cleanup_old_processes_loop())
-            slots.slot1(self._settings.name, parameters=self.parameters)
+            slots.slot1(self._settings.name, parameters=self._settings.parameters.model_dump())
             # 3. Сброс stop переменных (для stop_all_tasks) - задачи снова можно брать в работу
             self._execute_stop_all = False
             self._process_stop_all = False
@@ -69,7 +72,6 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
             return
         self._stop_component.set()
         self._running = False
-        self.parameters['running'] = False
         try:
             await self._on_stop(*args, **kwargs)
             # сбросить все tasks подключенных миксинов.
@@ -81,7 +83,7 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
             self._process_tasks_registry = {}
             self._stream_tasks_registry = {}
 
-            slots.slot2(self._settings.name, parameters=self.parameters)
+            slots.slot2(self._settings.name, parameters=self._settings.parameters.model_dump())
         except Exception as err:
             slots.slot3(name=self._settings.name, err=err)
             raise EngineExc.StopError(err)
@@ -110,7 +112,7 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
 
     async def stream(
             self, callback: Callable[[bytes], Awaitable[None]],
-            queue: asyncio.Queue[e_types.ProducerStreamInputDataType],
+            queue: asyncio.Queue[e_types.StreamInputDataType],
             request_id: str, *args, **kwargs
     ) -> None:
 
@@ -122,7 +124,7 @@ class Engine(ExecuteMixin, ProcessMixin, StreamMixin):
 
 if __name__ == '__main__':
     async def main():
-        from svc_platform.schemas import BaseSettings
+        from svc_platform.schemas import Settings
         from svc_platform.factories import settings_manager_factory, engine_factory
         from svc_platform.slots_manager import slots_init, handler_print_message_factory
         from svc_platform.schemas import EngineIOSchemas
@@ -131,7 +133,7 @@ if __name__ == '__main__':
         # текущие настройки
         current_settings, _ = settings_manager_factory(
             reset_json=True,  # перезаписать json
-            settings_model=BaseSettings()
+            settings_model=Settings()
         )
         engine = engine_factory(engine_class=Engine, settings=current_settings)
         await engine.start()

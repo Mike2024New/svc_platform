@@ -6,14 +6,13 @@ from svc_platform.engine.exc import EngineExc
 from svc_platform.engine.functions import stop_all_async_tasks
 from svc_platform.engine.types import StreamTask
 from svc_platform.schemas import engine_types as e_types
-from svc_platform.schemas import SettingsSchemaType
 
 
-class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
-    def __init__(self, settings: SettingsSchemaType):
+class StreamMixin(Generic[e_types.StreamInputDataType]):
+    def __init__(self, settings: e_types.SettingsType):
         self._settings = settings
         self._stream_tasks_registry: dict[str, StreamTask] = {}
-        self._stream_semaphore = asyncio.Semaphore(self._settings.producer_stream_limit)
+        self._stream_semaphore = asyncio.Semaphore(self._settings.stream_limit)
         self._stream_stop_all = False  # во внешнем движке нужно установить эту переменную в false в методе start
 
     def stream_current_tasks(self) -> int:
@@ -22,7 +21,7 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
 
     async def stream(
             self, callback: Callable[[bytes], Awaitable[None]],
-            queue: asyncio.Queue[e_types.ProducerStreamInputDataType],
+            queue: asyncio.Queue[e_types.StreamInputDataType],
             request_id: str, *args, **kwargs
     ) -> None:
         """
@@ -76,7 +75,7 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
                 self._stream_tasks_registry.pop(request_id, None)
 
     async def _on_stream(
-            self, queue: asyncio.Queue[e_types.ProducerStreamInputDataType],
+            self, queue: asyncio.Queue[e_types.StreamInputDataType],
             callback: Callable[[bytes], Awaitable[None]],
             event: asyncio.Event, *args, **kwargs
     ) -> None:
@@ -147,17 +146,17 @@ class StreamMixin(Generic[e_types.ProducerStreamInputDataType]):
         self._stream_stop_all = True
         await stop_all_async_tasks(
             tasks_registry=self._stream_tasks_registry,
-            timeout=self._settings.producer_stream_cancel_all_timeout,
+            timeout=self._settings.stream_cancel_all_timeout,
         )
 
 
 # пример использования
 async def main():
-    from svc_platform.schemas import BaseSettings
+    from svc_platform.schemas import Settings
     from svc_platform.slots_manager import slots_init, handler_print_message_factory
     slots_init(enable=True, handlers_list=[handler_print_message_factory()])
     request_id = '#001'
-    stream = StreamMixin(settings=BaseSettings(producer_stream_limit=1, producer_stream_cancel_all_timeout=10))
+    stream = StreamMixin(settings=Settings(stream_limit=1, stream_cancel_all_timeout=10))
 
     async def callback(x):
         print(x)
