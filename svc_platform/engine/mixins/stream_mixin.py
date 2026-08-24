@@ -107,7 +107,6 @@ class StreamMixin(Generic[e_types.StreamInputDataType]):
         # временная заглушка, имитирующая полезную нагрузку (возвращает тот же ответ)
         i = 0
         while not event.is_set():
-            print(123)
             data = await queue.get()
             if i == 10:
                 print(i / 0)
@@ -164,6 +163,7 @@ async def main():
     queue = asyncio.Queue()
     event = asyncio.Event()
 
+    # производитель, закидывает чанки в stream
     async def producer():
         i = 0
         while not event.is_set():

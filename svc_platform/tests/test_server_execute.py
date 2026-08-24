@@ -21,7 +21,7 @@ class ApiTestExecute(EngineTestSuite):
         assert request_id is not None, f'/execute/ не вернул request_id'
 
     def test_execute_interrupted(self, test_server, engine_io_schemas):
-        """Проверка что execute запускается и возвращает request_id"""
+        """Проверка что execute можно прервать по request_id"""
         _ = self
         url = test_server
         requests.get(url=url.start, timeout=10)  # запуск engine

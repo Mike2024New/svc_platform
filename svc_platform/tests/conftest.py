@@ -2,7 +2,7 @@ import threading, pytest, asyncio
 from typing import Generator
 from dataclasses import dataclass
 from svc_platform.engine import Engine
-from svc_platform.factories import message_bus_factory, server_factory, api_factory
+from svc_platform.factories import message_bus_factory, server_factory, api_factory, routers_factory
 from svc_platform.schemas import Settings
 from svc_platform.slots_manager import slots_init, handler_print_message_factory
 from svc_platform.schemas import EngineIOSchemas
@@ -76,8 +76,12 @@ class EngineTestSuite:
         """Фикстура для тестов сервера, расширяет Engine."""
         _ = self
         engine = test_engine_factory()
-        api_modul = api_factory(engine=engine, settings=settings, standart_api_schemas=EngineIOSchemas())
-        server = server_factory(settings=settings, api_modul=api_modul, middleware_err_enable=True, routers_list=[])
+        # подключение системных роутеров (start, stop, execute и др., проброс типизации/документации через EngineIOSchemas)
+        system_routers = routers_factory(engine=engine, settings=settings, engine_io_schemas=EngineIOSchemas())
+        # сборка системных роутеров (можно не передавать system_routers, тогда не подключатся стандартные эндпоинты start, stop, execute и др.)
+        api_modul = api_factory(engine=engine, settings=settings, standard_routers_list=system_routers)
+        # создание объекта сервера (запуск остановка)
+        server = server_factory(settings=settings, api_modul=api_modul)
         port = find_free_port(start_port=8000, max_attempts=100, ignore_ports_list=[])  # поиск свободного порта
         url = Urls(port=port, host='localhost')
 

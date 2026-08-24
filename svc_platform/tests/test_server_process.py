@@ -5,7 +5,7 @@ from infrastructure_http_clients import ServerProbe
 
 class ApiTestProcess(EngineTestSuite):
     def test_process(self, test_server, engine_io_schemas):
-        """Проверка цепочки process, отправка запроса, получение ответа, проверка корректности ответа"""
+        """Проверка цепочки process, отправка запроса, получение ответа, проверка что ответ соответствует модели"""
         _ = self
         url = test_server
         requests.get(url=url.start, timeout=10)  # запуск engine
@@ -28,9 +28,8 @@ class ApiTestProcess(EngineTestSuite):
         )
         data = result.json()
         assert data is not None, '/process_result/ не вернул json'
-        result = data.get('result')
         assert data is not None, '/process_result/ вернул ответ без поля result'
         try:
-            engine_io_schemas.process_output_data.model_validate(result)
+            engine_io_schemas.process_output_data.model_validate(data)
         except ValueError:
             raise RuntimeError(f'api /process_result/ возвращает не корректную модель ответа')
