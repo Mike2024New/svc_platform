@@ -167,6 +167,7 @@ def routers_factory(
             )
 
         async def producer(data):
+            """Отправляет ответ клиенту (callback в функции _on_stream)"""
             try:
                 if isinstance(data, bytes):
                     await websocket.send_bytes(data)
@@ -176,6 +177,7 @@ def routers_factory(
                 pass  # просто выход так как клиент штатно отключился
 
         async def consumer():
+            """Получает данные от клиента, и добавляет их в очередь которая обрабатывается в _on_stream"""
             try:
                 while True:
                     # обработка входных данных (перевод из байтов)
